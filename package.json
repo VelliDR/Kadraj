@@ -1,0 +1,24 @@
+{
+  "name": "dergi-pwa",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@mediapipe/selfie_segmentation": "^0.1.1675465747",
+    "heic2any": "^0.0.4",
+    "idb-keyval": "^6.3.0",
+    "konva": "^9.3.22",
+    "vite-plugin-pwa": "^0.20.5"
+  },
+  "devDependencies": {
+    "vite": "^5.4.21"
+  },
+  "description": "",
+  "main": "vite.config.js",
+  "keywords": []
+}

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Kadraj</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Cinzel:wght@600;800&family=Cormorant+Garamond:ital,wght@0,500;0,700;1,400;1,600&family=Lora:ital,wght@0,500;0,700;1,400&family=Montserrat:wght@400;600&family=Playfair+Display:ital,wght@0,600;0,900;1,400&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Üst Bar -->
+      <header class="app-bar">
+        <div class="brand">
+          <span class="brand-badge">ATÖLYE</span>
+          <span class="brand-title">Mizanpaj & Kırpma (300 DPI)</span>
+        </div>
+
+        <div class="app-bar-actions">
+          <div class="zoom-pill">
+            <span class="zoom-icon">🔍</span>
+            <input type="range" id="zoomRange" min="0.3" max="3" step="0.05" value="1" title="Ölçek" />
+          </div>
+          <button id="btnToggleBg" class="m3-btn m3-btn-tonal">🏁 Şeffaf</button>
+          <button id="btnReset" class="m3-btn m3-btn-terracotta">Sıfırla</button>
+          <button id="btnDownload" class="m3-btn m3-btn-sage">⬇️ 300 DPI PNG</button>
+        </div>
+      </header>
+
+      <!-- Merkez Çalışma Sahnesi -->
+      <main class="workspace">
+        <div id="canvas-container"></div>
+        
+        <div id="loadingOverlay" class="loading-overlay hidden">
+          <div class="m3-spinner"></div>
+          <p id="loadingText">İşleniyor...</p>
+        </div>
+      </main>
+
+      <!-- 2 Sütunlu Alt Kontrol Paneli -->
+      <footer class="control-dock">
+        <!-- SOL SÜTUN: Dikey Menü Rayı -->
+        <nav class="dock-sidebar">
+          <button class="dock-tab active" data-tab="tab-layers">
+            <span class="dock-tab-icon">🖼️</span>
+            <span class="dock-tab-label">Katman</span>
+          </button>
+          <button class="dock-tab" data-tab="tab-typography">
+            <span class="dock-tab-icon">✍️</span>
+            <span class="dock-tab-label">Yazı</span>
+          </button>
+          <button class="dock-tab" data-tab="tab-shadows">
+            <span class="dock-tab-icon">🎭</span>
+            <span class="dock-tab-label">Gölge</span>
+          </button>
+          <button class="dock-tab" data-tab="tab-shapes">
+            <span class="dock-tab-icon">📐</span>
+            <span class="dock-tab-label">Şablon</span>
+          </button>
+        </nav>
+
+        <!-- SAĞ SÜTUN: Seçili Menünün Geniş İçerik Alanı -->
+        <div class="dock-content">
+          <!-- 1. Katman & AI Paneli -->
+          <div class="dock-panel active" id="tab-layers">
+            <div class="panel-row">
+              <label class="m3-btn m3-btn-sand file-label">
+                📷 Görsel Seç (HEIC/JPG/PNG)
+                <input type="file" id="imageInput" accept="image/*,.heic,.heif" />
+              </label>
+
+              <label class="m3-btn m3-btn-tonal file-label">
+                📁 Resimden Maske
+                <input type="file" id="maskInput" accept="image/*,.heic,.heif" />
+              </label>
+            </div>
+            
+            <div class="panel-row">
+              <button id="btnInvertMask" class="m3-btn m3-btn-tonal hidden">🔄 Maskeyi Ters Çevir</button>
+              <button id="btnSegment" class="m3-btn m3-btn-lavender">✨ Özneyi Ayır</button>
+            </div>
+          </div>
+
+          <!-- 2. Tipografi & Açı Paneli -->
+          <div class="dock-panel" id="tab-typography">
+            <!-- 1. Sıra: Metin Girişi ve Font -->
+            <div class="panel-row">
+              <input type="text" id="textInput" class="m3-input" placeholder="Dize veya başlık..." value="Taşın İçindeki Zaman" />
+              
+              <select id="fontSelect" class="m3-select">
+                <option value="'Cormorant Garamond', serif">Cormorant (Şiirsel)</option>
+                <option value="'Lora', serif">Lora (Edebi)</option>
+                <option value="'Caveat', cursive">Caveat (El Yazısı)</option>
+                <option value="'Playfair Display', serif">Playfair (Klasik)</option>
+                <option value="'Cinzel', serif">Cinzel (Antik)</option>
+                <option value="'Montserrat', sans-serif">Montserrat (Modern)</option>
+                <option value="'Space Grotesk', sans-serif">Space Grotesk (Dinamik)</option>
+              </select>
+            </div>
+
+            <!-- 2. Sıra: Boyut, 360° Açı, Renk ve Butonlar -->
+            <div class="panel-row">
+              <div class="size-pill" title="Yazı Boyutu">
+                <span class="size-label">Aa</span>
+                <input type="range" id="fontSizeRange" min="14" max="90" step="1" value="32" />
+                <span id="fontSizeDisplay">32px</span>
+              </div>
+
+              <div class="dial-pill" title="360° Döndürme Açısı">
+                <span class="dial-icon">🔄</span>
+                <input type="range" id="textRotationRange" min="0" max="360" step="1" value="0" />
+                <span id="textRotationDisplay">0°</span>
+              </div>
+
+              <div class="color-wrap" title="Yazı Rengi">
+                <input type="color" id="textColor" value="#1a1a1a" />
+              </div>
+
+              <button id="btnAddText" class="m3-btn m3-btn-sand">➕ Ekle</button>
+              <button id="btnDeleteText" class="m3-btn m3-btn-terracotta hidden">🗑️ Sil</button>
+            </div>
+          </div>
+
+          <!-- 3. Gölgeler & Bindirme Paneli -->
+          <div class="dock-panel" id="tab-shadows">
+            <!-- 1. Sıra: Kenar Yumuşatma & Şekil Gölgesi -->
+            <div class="panel-row">
+              <div class="shadow-subgroup">
+                <span class="group-label">✂️ Yumuşatma:</span>
+                <div class="dial-pill" title="Yapay Zeka Kenar Bindirme">
+                  <input type="range" id="edgeOverlapRange" min="0.5" max="5.0" step="0.1" value="0.8" />
+                  <span id="edgeOverlapDisplay">%0.8</span>
+                </div>
+              </div>
+
+              <div class="divider-v"></div>
+
+              <div class="shadow-subgroup">
+                <span class="group-label">📐 Şekil Gölgesi:</span>
+                <div class="dial-pill">
+                  <span>Açı:</span>
+                  <input type="range" id="shapeShadowAngle" min="0" max="360" step="5" value="45" />
+                  <span id="shapeShadowAngleDisplay">45°</span>
+                </div>
+                <div class="dial-pill">
+                  <span>Uzaklık:</span>
+                  <input type="range" id="shapeShadowDist" min="0" max="40" step="1" value="0" />
+                  <span id="shapeShadowDistDisplay">0px</span>
+                </div>
+                <div class="dial-pill">
+                  <span>Blur:</span>
+                  <input type="range" id="shapeShadowBlur" min="0" max="30" step="1" value="0" />
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. Sıra: Özne Silüet Gölgesi -->
+            <div class="panel-row">
+              <label class="toggle-pill">
+                <input type="checkbox" id="chkSubjectShadow" />
+                <span>👤 Silüet Gölgesi</span>
+              </label>
+
+              <div class="dial-pill">
+                <span>Açı:</span>
+                <input type="range" id="subjShadowAngle" min="0" max="360" step="5" value="135" />
+                <span id="subjShadowAngleDisplay">135°</span>
+              </div>
+
+              <div class="dial-pill">
+                <span>Mesafe:</span>
+                <input type="range" id="subjShadowDist" min="0" max="50" step="1" value="14" />
+                <span id="subjShadowDistDisplay">14px</span>
+              </div>
+
+              <div class="color-wrap" title="Silüet Rengi">
+                <input type="color" id="subjShadowColor" value="#1a1a1a" />
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Şablonlar Paneli -->
+          <div class="dock-panel" id="tab-shapes">
+            <div class="shape-scroll" id="shapeButtons">
+              <button class="shape-pill" data-shape="fluidRiver">🌊 Akışkan Nehir</button>
+              <button class="shape-pill" data-shape="fluidCorners">🌓 Karşıt Köşeler</button>
+              <button class="shape-pill" data-shape="blob">💧 Akışkan Leke</button>
+              <button class="shape-pill" data-shape="waveTop">〰️ Dalgalı Tepe</button>
+              <button class="shape-pill" data-shape="arch">🏛️ Antik Kemer</button>
+              <button class="shape-pill" data-shape="doubleArch">🚪 İkili Portal</button>
+              <button class="shape-pill" data-shape="cinemaFrame">📺 Retro Ekran</button>
+              <button class="shape-pill" data-shape="ticket">🎟️ Sinema Bileti</button>
+              <button class="shape-pill" data-shape="torn1">📜 Dikey Yırtık</button>
+              <button class="shape-pill" data-shape="torn2">📄 Alt Yırtık</button>
+              <button class="shape-pill" data-shape="tornWindow">🕳️ Yırtık Pencere</button>
+              <button class="shape-pill" data-shape="stamp">📮 Posta Pulu</button>
+              <button class="shape-pill" data-shape="puzzle">🧩 Puzzle</button>
+              <button class="shape-pill" data-shape="diagonal">⚡ Çapraz Kesim</button>
+              <button class="shape-pill" data-shape="diagonalSplit">📐 Çapraz Şerit</button>
+              <button class="shape-pill" data-shape="hexagon">⬡ Altıgen</button>
+              <button class="shape-pill" data-shape="diamond">💠 Elmas Kesim</button>
+              <button class="shape-pill" data-shape="badge">🎖️ Rozet</button>
+              <button class="shape-pill" data-shape="circle">⭕ Daire</button>
+              <button class="shape-pill" data-shape="ellipse">🥚 Elips</button>
+              <button class="shape-pill" data-shape="windowGrid">🪟 4'lü Pencere</button>
+            </div>
+          </div>
+        </div>
+      </footer>
+
+      <!-- En Alt Durum Şeridi -->
+      <div class="status-bar">
+        <p id="statusText">Hazır. Bir görsel seçerek başlayın.</p>
+      </div>
+    </div>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,457 @@
+/* =========================================================
+   MATERIAL 3 & 5-RENK MUTED (MAT) PASTEL PALETİ
+   ========================================================= */
+:root {
+  /* Arka Plan ve Yüzey Tonları (M3 Dark) - Korundu */
+  --m3-surface-dark: #191c20;
+  --m3-surface-container: #23272f;
+  --m3-surface-high: #2d323c;
+  --m3-surface-hover: #373d49;
+  
+  /* Matlaştırılmış (Muted) Pastel Renkler */
+  --m3-pastel-sage: #7a9c7e;       /* Primary - Daha tozlu adaçayı */
+  --m3-pastel-lavender: #9a8cbf;   /* Creative / AI - Daha puslu lavanta */
+  --m3-pastel-sand: #d1c4a9;       /* Warm Secondary - Daha soluk kum beji */
+  --m3-pastel-terracotta: #b87867; /* Danger / Warning - Daha mat kiremit */
+  
+  /* Metin Renkleri */
+  --m3-text-primary: #f0f3f6;
+  --m3-text-secondary: #9aa0a6;
+  --m3-text-dark: #1e2229;
+  
+  /* Animasyon */
+  --m3-spring: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--m3-surface-dark);
+  color: var(--m3-text-primary);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+}
+
+/* 1. Üst Bar */
+.app-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background-color: var(--m3-surface-container);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  gap: 12px;
+  z-index: 10;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-badge {
+  background-color: var(--m3-pastel-sand);
+  color: var(--m3-text-dark);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.8px;
+}
+
+.brand-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--m3-text-secondary);
+}
+
+.app-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* 2. Çalışma Sahnesi */
+.workspace {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background: radial-gradient(circle at center, #22262e 0%, var(--m3-surface-dark) 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+#canvas-container {
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #fff;
+}
+
+/* =========================================================
+   3. İKİ SÜTUNLU ALT KONTROL PANELİ (SPLIT DOCK)
+   ========================================================= */
+.control-dock {
+  display: grid;
+  grid-template-columns: 88px 1fr; /* Sol: Menü Rayı, Sağ: İçerik Alanı */
+  background-color: var(--m3-surface-container);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  min-height: 115px;
+  max-height: 135px;
+  z-index: 10;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Sol Sütun: Dikey Menü Rayı */
+.dock-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  background-color: rgba(0, 0, 0, 0.22);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  justify-content: center;
+}
+
+.dock-tab {
+  background: none;
+  border: none;
+  color: var(--m3-text-secondary);
+  padding: 5px 6px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  transition: var(--m3-spring);
+  width: 100%;
+}
+
+.dock-tab-icon {
+  font-size: 14px;
+}
+
+.dock-tab:hover {
+  background-color: var(--m3-surface-high);
+  color: var(--m3-text-primary);
+  transform: translateX(2px);
+}
+
+.dock-tab.active {
+  background-color: var(--m3-surface-high);
+  color: var(--m3-pastel-sand);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* Sağ Sütun: Seçili Menü İçeriği */
+.dock-content {
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
+}
+
+.dock-panel {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.dock-panel.active {
+  display: flex;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Nizami Sıralar (Panel Rows) */
+.panel-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+/* Tipografi & Input Stilleri */
+.m3-input {
+  background-color: var(--m3-surface-high);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--m3-text-primary);
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  min-width: 180px;
+  flex: 1;
+  outline: none;
+  transition: var(--m3-spring);
+}
+
+.m3-input:focus {
+  border-color: var(--m3-pastel-sand);
+}
+
+.m3-select {
+  /* HATA DÜZELTMESİ: Standart appearance özelliği eklendi */
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none; 
+  background-color: var(--m3-surface-high);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--m3-text-primary);
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+}
+
+/* Butonlar */
+.m3-btn {
+  border: none;
+  outline: none;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: var(--m3-spring);
+}
+
+.m3-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  filter: brightness(1.08);
+}
+
+.m3-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.m3-btn-sage { background-color: var(--m3-pastel-sage); color: var(--m3-text-dark); }
+.m3-btn-lavender { background-color: var(--m3-pastel-lavender); color: var(--m3-text-dark); }
+.m3-btn-sand { background-color: var(--m3-pastel-sand); color: var(--m3-text-dark); }
+.m3-btn-terracotta { background-color: var(--m3-pastel-terracotta); color: #fff; }
+.m3-btn-tonal { background-color: var(--m3-surface-high); color: var(--m3-text-primary); }
+
+.file-label input { display: none; }
+
+/* Hap Sürgüler */
+.zoom-pill, .size-pill, .dial-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--m3-surface-high);
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  color: var(--m3-text-secondary);
+}
+
+.zoom-pill input[type="range"],
+.size-pill input[type="range"],
+.dial-pill input[type="range"] {
+  /* Uyumluluk için appearance eklendi (style track/thumb custom yapılmadığı için accent-color yeterli olabilir ama hata riski minimize edildi) */
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
+  background: transparent; /* track görünmesin diye */
+  width: 60px;
+  accent-color: var(--m3-pastel-sand);
+  cursor: pointer;
+}
+
+/* Range inputlar için webkit reset (gerekirse thumb style eklenebilir) */
+.zoom-pill input[type="range"]::-webkit-slider-runnable-track,
+.size-pill input[type="range"]::-webkit-slider-runnable-track,
+.dial-pill input[type="range"]::-webkit-slider-runnable-track {
+  -webkit-appearance: none;
+          appearance: none;
+}
+
+.dial-pill input[type="range"] {
+  accent-color: var(--m3-pastel-lavender);
+}
+
+.color-wrap input[type="color"] {
+  /* HATA DÜZELTMESİ: Standart appearance özelliği eklendi */
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
+  border: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  cursor: pointer;
+  background: none;
+  transition: var(--m3-spring);
+}
+
+.color-wrap input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.color-wrap input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
+
+.color-wrap input[type="color"]:hover {
+  transform: scale(1.15);
+}
+
+/* Gölgeler Alt Grubu */
+.shadow-subgroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.group-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--m3-pastel-sand);
+}
+
+.divider-v {
+  width: 1px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.toggle-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--m3-surface-high);
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--m3-pastel-lavender);
+}
+
+/* Şablon Izgarası */
+.shape-scroll {
+  display: grid;
+  grid-template-rows: repeat(2, 1fr);
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  gap: 6px 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  width: 100%;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.shape-scroll::-webkit-scrollbar { display: none; }
+
+.shape-pill {
+  background-color: var(--m3-surface-high);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--m3-text-secondary);
+  padding: 5px 12px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--m3-spring);
+}
+
+.shape-pill:hover {
+  background-color: var(--m3-surface-hover);
+  color: var(--m3-text-primary);
+  transform: translateY(-1px) scale(1.02);
+}
+
+.shape-pill.active {
+  background-color: var(--m3-pastel-lavender);
+  color: var(--m3-text-dark);
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(178, 152, 220, 0.35);
+}
+
+/* Durum Şeridi */
+.status-bar {
+  padding: 3px 12px;
+  font-size: 10px;
+  color: var(--m3-text-secondary);
+  text-align: center;
+  background-color: var(--m3-surface-dark);
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+/* Yükleme Ekranı */
+.loading-overlay {
+  position: absolute;
+  background: rgba(25, 28, 32, 0.85);
+  backdrop-filter: blur(6px);
+  padding: 24px 32px;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  z-index: 100;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+}
+
+.hidden { display: none !important; }
+
+.m3-spinner {
+  width: 34px;
+  height: 34px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--m3-pastel-lavender);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.transparent-canvas {
+  background-image: linear-gradient(45deg, #2a2f37 25%, transparent 25%), 
+                    linear-gradient(-45deg, #2a2f37 25%, transparent 25%), 
+                    linear-gradient(45deg, transparent 75%, #2a2f37 75%), 
+                    linear-gradient(-45deg, transparent 75%, #2a2f37 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+}
