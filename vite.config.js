@@ -40,9 +40,9 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,wasm}'],
-        // 2 MB limitini 10 MB'a yükseltiyoruz:
-        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024
+        // .wasm çıkarıldı; SW sadece temel web dosyalarını önbelleğe alır
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024
       }
     })
   ]

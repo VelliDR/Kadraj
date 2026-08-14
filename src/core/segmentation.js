@@ -47,10 +47,9 @@ async function extractWithMediaPipe(imageObj) {
 }
 
 // ========================================================
-// 2. MOTOR: IMGLY (8-BIT VE FP32 MODELLERİ)
+// 2. MOTOR: IMGLY (8-BIT VE 16-BIT MODELLERİ)
 // ========================================================
 async function extractWithImgly(imageObj, modelName, onProgress) {
-  // RAM koruması için görseli ölçekle
   const MAX_AI_SIZE = 1024;
   let scale = 1;
   if (imageObj.width > MAX_AI_SIZE || imageObj.height > MAX_AI_SIZE) {
@@ -65,10 +64,9 @@ async function extractWithImgly(imageObj, modelName, onProgress) {
 
   const blob = await new Promise((res) => aiWorkCanvas.toBlob(res, 'image/png'));
 
-  // modelName: 'isnet_quint8' veya 'isnet' (tam hassasiyetli FP32 modeli)
   const config = {
     publicPath: 'https://staticimgly.com/@imgly/background-removal-data/1.5.7/dist/',
-    model: modelName,
+    model: modelName, // 'isnet_quint8' veya 'isnet_fp16'
     progress: (key, current, total) => {
       if (onProgress && total > 0) {
         const pct = Math.round((current / total) * 100);
@@ -99,11 +97,9 @@ async function extractWithImgly(imageObj, modelName, onProgress) {
 // ANA DAĞITICI
 // ========================================================
 export async function extractSubject(imageObj, engineSelection = 'mediapipe', onProgress = null) {
-  if (engineSelection === 'imgly-fp32') {
-    // 'isnet', imgly'nin tam hassasiyetli (FP32) ana modelidir
-    return await extractWithImgly(imageObj, 'isnet', onProgress);
+  if (engineSelection === 'imgly-fp16') {
+    return await extractWithImgly(imageObj, 'isnet_fp16', onProgress);
   } else if (engineSelection === 'imgly-quint8') {
-    // 8-bit kuantize hafif model
     return await extractWithImgly(imageObj, 'isnet_quint8', onProgress);
   } else {
     return await extractWithMediaPipe(imageObj);
