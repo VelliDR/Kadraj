@@ -12,7 +12,6 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
-    "@mediapipe/selfie_segmentation": "^0.1.1675465747",
     "heic2any": "^0.0.4",
     "idb-keyval": "^6.3.0",
     "konva": "^9.3.22",

@@ -1,42 +1,41 @@
 // src/core/segmentation.js
-import { SelfieSegmentation } from '@mediapipe/selfie_segmentation';
+// DİKKAT: En üstteki "import" satırını sildik! 
+// Kütüphaneyi index.html'den "window.SelfieSegmentation" olarak alacağız.
 
 let segmenterInstance = null;
 
-function getSegmenter() {
+async function getSegmenter() {
   if (!segmenterInstance) {
-    segmenterInstance = new SelfieSegmentation({
-      // Sürümü sabitleyerek (0.1.1675465747) uyumsuzluk çökmelerini önlüyoruz
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1.1675465747/${file}`,
+    // window üzerinden kütüphaneyi çağırıyoruz
+    segmenterInstance = new window.SelfieSegmentation({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`,
     });
-    // modelSelection 1: Daha hızlı ve hafif model (Mobil için mükemmel)
+    
+    // Mobil için hafif model seçimi
     segmenterInstance.setOptions({ modelSelection: 1 });
+    
+    // ÇOK KRİTİK: Mobilde yavaş bağlantılarda AI'nin hazır olmasını beklemek zorundayız
+    await segmenterInstance.initialize(); 
   }
   return segmenterInstance;
 }
 
-export function extractSubject(imageObj) {
-  const segmenter = getSegmenter();
+export async function extractSubject(imageObj) {
+  // Önce AI motorunun %100 yüklendiğinden emin ol
+  const segmenter = await getSegmenter();
 
   return new Promise((resolve, reject) => {
     segmenter.onResults((results) => {
       const maskCanvas = document.createElement('canvas');
-      // Maskeyi %100 Orijinal Baskı Boyutunda hazırlıyoruz
       maskCanvas.width = imageObj.width;
       maskCanvas.height = imageObj.height;
       const mCtx = maskCanvas.getContext('2d');
       
-      // AI'dan gelen küçük maskeyi devasa orijinal boyuta geri esneterek çiziyoruz
       mCtx.drawImage(results.segmentationMask, 0, 0, imageObj.width, imageObj.height);
       resolve(maskCanvas);
     });
 
-    /* ========================================================
-       MOBİL ÇÖKME (OOM) ÖNLEMİ: DUBLÖR KANVAS
-       ========================================================
-       Devasa fotoğraflar mobilde AI motorunu çökertir. 
-       Bu yüzden AI'ya fotoğrafın sadece max 1024px'lik hafif bir kopyasını gönderiyoruz.
-    */
+    // Mobilde RAM çökmesini önlemek için dublör kanvas oluşturuyoruz
     const MAX_AI_SIZE = 1024;
     let scale = 1;
     if (imageObj.width > MAX_AI_SIZE || imageObj.height > MAX_AI_SIZE) {
@@ -48,12 +47,11 @@ export function extractSubject(imageObj) {
     aiWorkCanvas.height = imageObj.height * scale;
     const aiCtx = aiWorkCanvas.getContext('2d');
     
-    // Orijinal fotoğrafı küçük kanvasa (dublöre) kopyala
     aiCtx.drawImage(imageObj, 0, 0, aiWorkCanvas.width, aiWorkCanvas.height);
 
-    // AI'ya asıl fotoğrafı değil, küçük dublörü gönder. İşlemi başlat ve hatayı yakala:
+    // Görseli AI'ya gönder
     segmenter.send({ image: aiWorkCanvas }).catch(err => {
-        console.error("Yapay Zeka Hatası:", err);
+        console.error("Yapay Zeka Çalıştırma Hatası:", err);
         reject(err);
     });
   });
