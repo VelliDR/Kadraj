@@ -1,6 +1,7 @@
-// src/main.js (En üst kısım)
+// src/main.js
 import { registerSW } from 'virtual:pwa-register';
 
+// PWA Servis İşçisi Kaydı
 registerSW({
   immediate: true,
   onNeedRefresh() {
@@ -11,7 +12,6 @@ registerSW({
   }
 });
 
-// ... [Geriye kalan diğer kodlarınız aynı kalacak] ...
 import { 
   initCanvas, 
   loadMainImage, 
@@ -41,7 +41,9 @@ import { SHAPES } from './core/shapes.js';
 import { generatePixelMaskCanvas } from './core/pixelMask.js';
 import { extractSubject } from './core/segmentation.js';
 
-// DOM
+// =========================================================
+// DOM ELEMANLARI
+// =========================================================
 const statusText = document.getElementById('statusText');
 const canvasContainer = document.getElementById('canvas-container');
 const zoomRange = document.getElementById('zoomRange');
@@ -49,6 +51,7 @@ const loadingOverlay = document.getElementById('loadingOverlay');
 const loadingText = document.getElementById('loadingText');
 const btnInvertMask = document.getElementById('btnInvertMask');
 const btnSegment = document.getElementById('btnSegment');
+const aiEngineSelect = document.getElementById('aiEngineSelect');
 
 // Tipografi DOM
 const textInput = document.getElementById('textInput');
@@ -81,17 +84,32 @@ let customMaskRawImg = null;
 let isMaskInverted = false;
 let rawSegmentationResult = null;
 
-// 1. Sol Sütun Dikey Menü Geçişi (Split Navigation)
+// Yardımcı Yükleme Ekranı Fonksiyonları
+function showLoading(msg) {
+  if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+  if (loadingText) loadingText.innerText = msg || 'İşleniyor...';
+}
+
+function hideLoading() {
+  if (loadingOverlay) loadingOverlay.classList.add('hidden');
+}
+
+// =========================================================
+// 1. SOL MENÜ GEÇİŞLERİ (DOCK TABS)
+// =========================================================
 document.querySelectorAll('.dock-tab').forEach((tab) => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.dock-tab').forEach((t) => t.classList.remove('active'));
     document.querySelectorAll('.dock-panel').forEach((p) => p.classList.remove('active'));
     tab.classList.add('active');
-    document.getElementById(tab.dataset.tab).classList.add('active');
+    const targetPanel = document.getElementById(tab.dataset.tab);
+    if (targetPanel) targetPanel.classList.add('active');
   });
 });
 
-// 2. Sahneyi Başlat
+// =========================================================
+// 2. KANVASI BAŞLAT
+// =========================================================
 initCanvas('canvas-container', (selectedNode) => {
   if (selectedNode) {
     btnDeleteText.classList.remove('hidden');
@@ -105,20 +123,22 @@ initCanvas('canvas-container', (selectedNode) => {
     textRotationRange.value = rot;
     textRotationDisplay.innerText = `${rot}°`;
 
-    // Metin seçildiğinde sol menüden otomatik Yazı sekmesine geç
-    document.querySelector('[data-tab="tab-typography"]').click();
+    // Metin seçildiğinde otomatik Yazı sekmesini aç
+    const typoTab = document.querySelector('[data-tab="tab-typography"]');
+    if (typoTab) typoTab.click();
   } else {
     btnDeleteText.classList.add('hidden');
   }
 });
 
-// 3. Görsel Yükleme (HEIC / PNG / JPG %100 Kalite)
+// =========================================================
+// 3. GÖRSEL YÜKLEME (HEIC / PNG / JPG)
+// =========================================================
 document.getElementById('imageInput').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  loadingOverlay.classList.remove('hidden');
-  loadingText.innerText = 'Görsel %100 kalitede işleniyor...';
+  showLoading('Görsel %100 kalitede işleniyor...');
 
   try {
     const imgObj = await processImageFile(file, (msg) => {
@@ -137,54 +157,62 @@ document.getElementById('imageInput').addEventListener('change', async (e) => {
     statusText.innerText = 'Görsel yüklenirken hata oluştu.';
     console.error(err);
   } finally {
-    loadingOverlay.classList.add('hidden');
+    hideLoading();
   }
 });
 
-// 4. Akıllı Özne Ayrıştırma (AI)
+// =========================================================
+// 4. YAPAY ZEKA İLE ÖZNEYİ AYIRMA (MEDIAPIPE / IMGLY)
+// =========================================================
 btnSegment.addEventListener('click', async () => {
   if (!hasImage()) return showWarning();
 
+  // Zaten özne ayrılmışsa butona basınca kaldır (Toggle)
   if (hasForegroundSubject()) {
     removeForegroundSubject();
+    rawSegmentationResult = null;
     btnSegment.innerText = '✨ Özneyi Ayır';
-    statusText.innerText = 'Genel moda dönüldü.';
+    chkSubjectShadow.checked = false;
+    statusText.innerText = 'Özne katmanı kaldırıldı.';
     return;
   }
 
-  if (rawSegmentationResult) {
-    processRawSegmentation(rawSegmentationResult);
-    btnSegment.innerText = '↩️ Özneyi Birleştir';
-    statusText.innerText = 'Özne geri yüklendi.';
-    return;
-  }
+  const origImg = getOriginalImage();
+  if (!origImg) return showWarning();
 
-  loadingOverlay.classList.remove('hidden');
-  loadingText.innerText = 'Özne ayrıştırılıyor...';
+  const selectedEngine = aiEngineSelect ? aiEngineSelect.value : 'mediapipe';
+  showLoading(selectedEngine === 'imgly' ? 'imgly modeli hazırlanıyor...' : 'MediaPipe özneyi ayrıştırıyor...');
 
   try {
-    const segmentMask = await extractSubject(getOriginalImage());
-    rawSegmentationResult = segmentMask;
-    processRawSegmentation(rawSegmentationResult);
+    const maskCanvas = await extractSubject(origImg, selectedEngine, (progressText) => {
+      loadingText.innerText = progressText;
+    });
 
-    btnSegment.innerText = '↩️ Özneyi Birleştir';
-    statusText.innerText = 'Özne ayrıştırıldı! Kenar yumuşatmayı Gölge menüsünden ayarlayabilirsiniz.';
-  } catch (err) {
-    statusText.innerText = 'Ayrıştırma hatası.';
-    console.error(err);
+    rawSegmentationResult = maskCanvas;
+    processRawSegmentation(rawSegmentationResult);
+    btnSegment.innerText = '🗑️ Özneyi Kaldır';
+    statusText.innerText = 'Özne başarıyla ayrıştırıldı (3D Pop-Out aktif).';
+  } catch (error) {
+    console.error('Özne ayırma hatası:', error);
+    statusText.innerText = 'Özne ayrıştırılamadı.';
+    alert('Özne ayrıştırılamadı. Diğer motoru deneyebilir veya manuel maske yükleyebilirsiniz.');
   } finally {
-    loadingOverlay.classList.add('hidden');
+    hideLoading();
   }
 });
 
-// 5. Kenar Bindirme & Yumuşatma Sürgüsü (%0.5 - %5.0)
+// =========================================================
+// 5. KENAR BİNDİRME SÜRGÜSÜ
+// =========================================================
 edgeOverlapRange.addEventListener('input', (e) => {
   const val = parseFloat(e.target.value);
   edgeOverlapDisplay.innerText = `%${val.toFixed(1)}`;
   setEdgeOverlap(val);
 });
 
-// 6. Tipografi Olayları
+// =========================================================
+// 6. TİPOGRAFİ OLAYLARI
+// =========================================================
 textRotationRange.addEventListener('input', (e) => {
   const rot = parseInt(e.target.value, 10);
   textRotationDisplay.innerText = `${rot}°`;
@@ -216,29 +244,66 @@ btnAddText.addEventListener('click', () => {
 
 btnDeleteText.addEventListener('click', () => deleteSelectedText());
 
-// 7. Gölgeler
+// =========================================================
+// 7. GÖLGELER & SİLÜET (AKICI 60 FPS OPTİMİZASYONLU)
+// =========================================================
+let shapeShadowRaf = null;
+let subjShadowRaf = null;
+
+// Şekil Gölgesi Dinleyicileri (rAF Kilidiyle Hafifletildi)
 shapeShadowAngle.addEventListener('input', (e) => {
   shapeShadowAngleDisplay.innerText = `${e.target.value}°`;
-  updateShapeShadow({ angle: parseInt(e.target.value, 10) });
+  if (shapeShadowRaf) cancelAnimationFrame(shapeShadowRaf);
+  shapeShadowRaf = requestAnimationFrame(() => {
+    updateShapeShadow({ angle: parseInt(e.target.value, 10) });
+  });
 });
+
 shapeShadowDist.addEventListener('input', (e) => {
   shapeShadowDistDisplay.innerText = `${e.target.value}px`;
-  updateShapeShadow({ distance: parseInt(e.target.value, 10) });
+  if (shapeShadowRaf) cancelAnimationFrame(shapeShadowRaf);
+  shapeShadowRaf = requestAnimationFrame(() => {
+    updateShapeShadow({ distance: parseInt(e.target.value, 10) });
+  });
 });
-shapeShadowBlur.addEventListener('input', (e) => updateShapeShadow({ blur: parseInt(e.target.value, 10) }));
 
-chkSubjectShadow.addEventListener('change', (e) => updateSubjectSilhouetteShadow({ enabled: e.target.checked }));
+shapeShadowBlur.addEventListener('input', (e) => {
+  if (shapeShadowRaf) cancelAnimationFrame(shapeShadowRaf);
+  shapeShadowRaf = requestAnimationFrame(() => {
+    updateShapeShadow({ blur: parseInt(e.target.value, 10) });
+  });
+});
+
+// Silüet Gölgesi Dinleyicileri
+chkSubjectShadow.addEventListener('change', (e) => {
+  updateSubjectSilhouetteShadow({ enabled: e.target.checked });
+});
+
 subjShadowAngle.addEventListener('input', (e) => {
   subjShadowAngleDisplay.innerText = `${e.target.value}°`;
-  updateSubjectSilhouetteShadow({ angle: parseInt(e.target.value, 10) });
+  if (subjShadowRaf) cancelAnimationFrame(subjShadowRaf);
+  subjShadowRaf = requestAnimationFrame(() => {
+    updateSubjectSilhouetteShadow({ angle: parseInt(e.target.value, 10) });
+  });
 });
+
 subjShadowDist.addEventListener('input', (e) => {
   subjShadowDistDisplay.innerText = `${e.target.value}px`;
-  updateSubjectSilhouetteShadow({ distance: parseInt(e.target.value, 10) });
+  if (subjShadowRaf) cancelAnimationFrame(subjShadowRaf);
+  subjShadowRaf = requestAnimationFrame(() => {
+    updateSubjectSilhouetteShadow({ distance: parseInt(e.target.value, 10) });
+  });
 });
-subjShadowColor.addEventListener('input', (e) => updateSubjectSilhouetteShadow({ color: e.target.value }));
 
-// 8. Şablonlar & Özel Maske
+subjShadowColor.addEventListener('input', (e) => {
+  if (subjShadowRaf) cancelAnimationFrame(subjShadowRaf);
+  subjShadowRaf = requestAnimationFrame(() => {
+    updateSubjectSilhouetteShadow({ color: e.target.value });
+  });
+});
+// =========================================================
+// 8. ŞABLONLAR & MANUEL PİKSEL MASKE
+// =========================================================
 document.querySelectorAll('.shape-pill').forEach((btn) => {
   btn.addEventListener('click', () => {
     if (!hasImage()) return showWarning();
@@ -256,15 +321,13 @@ document.getElementById('maskInput').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file || !hasImage()) return showWarning();
 
-  loadingOverlay.classList.remove('hidden');
-  loadingText.innerText = 'Maske yükleniyor...';
-
+  showLoading('Maske yükleniyor...');
   try {
     customMaskRawImg = await processImageFile(file);
     isMaskInverted = false;
     renderCustomMask();
   } finally {
-    loadingOverlay.classList.add('hidden');
+    hideLoading();
   }
 });
 
@@ -280,7 +343,9 @@ btnInvertMask.addEventListener('click', () => {
   renderCustomMask();
 });
 
-// 9. Zoom, Arka Plan, Sıfırlama ve 300 DPI Çıktı
+// =========================================================
+// 9. ZOOM, ŞEFFAFLIK, SIFIRLAMA VE 300 DPI ÇIKTI
+// =========================================================
 zoomRange.addEventListener('input', (e) => setZoom(parseFloat(e.target.value)));
 
 document.getElementById('btnToggleBg').addEventListener('click', () => {
@@ -305,8 +370,7 @@ document.getElementById('btnReset').addEventListener('click', () => {
 document.getElementById('btnDownload').addEventListener('click', () => {
   if (!hasImage()) return showWarning();
 
-  loadingOverlay.classList.remove('hidden');
-  loadingText.innerText = '300 DPI matbaa kalitesinde PNG üretiliyor...';
+  showLoading('300 DPI matbaa kalitesinde PNG üretiliyor...');
 
   setTimeout(() => {
     const dataURL = exportPNG();
@@ -316,12 +380,12 @@ document.getElementById('btnDownload').addEventListener('click', () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    loadingOverlay.classList.add('hidden');
+    hideLoading();
     statusText.innerText = '300 DPI A4 formatında kayıpsız PNG indirildi!';
   }, 100);
 });
 
-// Yatay Kaydırma
+// Yatay Kaydırma Desteği
 const shapeScroll = document.getElementById('shapeButtons');
 if (shapeScroll) {
   shapeScroll.addEventListener('wheel', (e) => {

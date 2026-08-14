@@ -12,6 +12,7 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "@imgly/background-removal": "^1.7.0",
     "heic2any": "^0.0.4",
     "idb-keyval": "^6.3.0",
     "konva": "^9.3.22",

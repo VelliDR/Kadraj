@@ -5,14 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Kadraj | Sanatsal Mizanpaj Atölyesi</title>
     
-    <!-- Favicon & PWA Standartları -->
+    <!-- Favicon & İkonlar -->
     <link rel="icon" type="image/png" href="./icon-192.png" />
-    <link rel="manifest" href="./manifest.json" />
+    <link rel="apple-touch-icon" href="./icon-192.png" />
+
+    <!-- PWA & Mobil Uyumluluk Meta Etiketleri -->
     <meta name="theme-color" content="#191c20" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Kadraj" />
-    <link rel="apple-touch-icon" href="./icon-192.png" />
 
     <!-- Tipografi Fontları -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -76,7 +78,7 @@
 
         <!-- SAĞ SÜTUN / MOBİLDE ALT ALAN: Menü İçeriği -->
         <div class="dock-content">
-          <!-- 1. Katman & AI Paneli -->
+          <!-- 1. Katman & AI Paneli (TEMİZLENMİŞ KISIM) -->
           <div class="dock-panel active" id="tab-layers">
             <div class="panel-row">
               <label class="m3-btn m3-btn-sand file-label">
@@ -92,6 +94,13 @@
             
             <div class="panel-row">
               <button id="btnInvertMask" class="m3-btn m3-btn-tonal hidden">🔄 Maskeyi Ters Çevir</button>
+              
+              <!-- Yapay Zeka Motor Seçici -->
+              <select id="aiEngineSelect" class="m3-select" title="Yapay Zeka Motoru">
+                <option value="mediapipe">⚡ Hızlı Portre (MediaPipe)</option>
+                <option value="imgly">🎨 Hassas / Heykel (imgly)</option>
+              </select>
+
               <button id="btnSegment" class="m3-btn m3-btn-lavender">✨ Özneyi Ayır</button>
             </div>
           </div>
@@ -225,17 +234,10 @@
       </div>
     </div>
 
-    <!-- PWA Service Worker Kaydı -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js')
-            .then((reg) => console.log('PWA Servis İşçisi Aktif:', reg.scope))
-            .catch((err) => console.error('PWA Kayıt Hatası:', err));
-        });
-      }
-    </script>
+    <!-- MediaPipe AI Kütüphanesi -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js" crossorigin="anonymous"></script>
+
+    <!-- Ana Uygulama Modülü -->
     <script type="module" src="./src/main.js"></script>
   </body>
 </html>
