@@ -95,10 +95,9 @@
             <div class="panel-row">
               <button id="btnInvertMask" class="m3-btn m3-btn-tonal hidden">🔄 Maskeyi Ters Çevir</button>
               
-           <select id="aiEngineSelect" class="m3-select" title="Yapay Zeka Motoru">
-  <option value="mediapipe">⚡ Hızlı Portre (MediaPipe)</option>
-  <option value="imgly-quint8">🎨 Standart Heykel (8-Bit)</option>
-  <option value="imgly-fp16">💎 Hassas Heykel (16-Bit FP16)</option>
+        <select id="aiEngineSelect" class="m3-select" title="Yapay Zeka Modeli">
+  <option value="isnet_quint8" selected>🎨 Standart / Mobil (8-Bit)</option>
+  <option value="isnet_fp16">💎 Yüksek Hassasiyet (16-Bit FP16)</option>
 </select>
 
               <button id="btnSegment" class="m3-btn m3-btn-lavender">✨ Özneyi Ayır</button>
@@ -233,9 +232,6 @@
         <p id="statusText">Hazır. Bir görsel seçerek başlayın.</p>
       </div>
     </div>
-
-    <!-- MediaPipe AI Kütüphanesi -->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js" crossorigin="anonymous"></script>
 
     <!-- Ana Uygulama Modülü -->
     <script type="module" src="./src/main.js"></script>

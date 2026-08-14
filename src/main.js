@@ -94,6 +94,10 @@ function hideLoading() {
   if (loadingOverlay) loadingOverlay.classList.add('hidden');
 }
 
+function showWarning() {
+  if (statusText) statusText.innerText = 'Lütfen önce bir ana görsel yükleyin!';
+}
+
 // =========================================================
 // 1. SOL MENÜ GEÇİŞLERİ (DOCK TABS)
 // =========================================================
@@ -123,7 +127,6 @@ initCanvas('canvas-container', (selectedNode) => {
     textRotationRange.value = rot;
     textRotationDisplay.innerText = `${rot}°`;
 
-    // Metin seçildiğinde otomatik Yazı sekmesini aç
     const typoTab = document.querySelector('[data-tab="tab-typography"]');
     if (typoTab) typoTab.click();
   } else {
@@ -162,7 +165,7 @@ document.getElementById('imageInput').addEventListener('change', async (e) => {
 });
 
 // =========================================================
-// 4. YAPAY ZEKA İLE ÖZNEYİ AYIRMA (MEDIAPIPE / IMGLY)
+// 4. YAPAY ZEKA İLE ÖZNEYİ AYIRMA (IMGLY MOTORU)
 // =========================================================
 btnSegment.addEventListener('click', async () => {
   if (!hasImage()) return showWarning();
@@ -179,22 +182,22 @@ btnSegment.addEventListener('click', async () => {
   const origImg = getOriginalImage();
   if (!origImg) return showWarning();
 
-  const selectedEngine = aiEngineSelect ? aiEngineSelect.value : 'mediapipe';
-  showLoading('Yapay zeka hazırlanıyor...');
+  const selectedModel = aiEngineSelect ? aiEngineSelect.value : 'isnet_quint8';
+  showLoading('Yapay zeka modeli hazırlanıyor...');
 
   try {
-    const maskCanvas = await extractSubject(origImg, selectedEngine, (progressText) => {
+    const maskCanvas = await extractSubject(origImg, selectedModel, (progressText) => {
       loadingText.innerText = progressText;
     });
 
     rawSegmentationResult = maskCanvas;
     processRawSegmentation(rawSegmentationResult);
     btnSegment.innerText = '🗑️ Özneyi Kaldır';
-    statusText.innerText = 'Özne başarıyla ayrıştırıldı.';
+    statusText.innerText = 'Özne başarıyla ayrıştırıldı (3D Pop-Out aktif).';
   } catch (error) {
     console.error('Özne ayırma hatası:', error);
     statusText.innerText = 'Özne ayrıştırılamadı.';
-    alert('Özne ayrıştırılamadı.');
+    alert('Özne ayrıştırılamadı. Farklı bir görsel veya manuel maske deneyebilirsiniz.');
   } finally {
     hideLoading();
   }
@@ -249,7 +252,6 @@ btnDeleteText.addEventListener('click', () => deleteSelectedText());
 let shapeShadowRaf = null;
 let subjShadowRaf = null;
 
-// Şekil Gölgesi Dinleyicileri (rAF Kilidiyle Hafifletildi)
 shapeShadowAngle.addEventListener('input', (e) => {
   shapeShadowAngleDisplay.innerText = `${e.target.value}°`;
   if (shapeShadowRaf) cancelAnimationFrame(shapeShadowRaf);
@@ -273,7 +275,6 @@ shapeShadowBlur.addEventListener('input', (e) => {
   });
 });
 
-// Silüet Gölgesi Dinleyicileri
 chkSubjectShadow.addEventListener('change', (e) => {
   updateSubjectSilhouetteShadow({ enabled: e.target.checked });
 });
@@ -300,6 +301,7 @@ subjShadowColor.addEventListener('input', (e) => {
     updateSubjectSilhouetteShadow({ color: e.target.value });
   });
 });
+
 // =========================================================
 // 8. ŞABLONLAR & MANUEL PİKSEL MASKE
 // =========================================================
@@ -393,8 +395,4 @@ if (shapeScroll) {
       shapeScroll.scrollLeft += e.deltaY;
     }
   });
-}
-
-function showWarning() {
-  statusText.innerText = 'Lütfen önce bir ana görsel yükleyin!';
 }
