@@ -167,7 +167,6 @@ document.getElementById('imageInput').addEventListener('change', async (e) => {
 btnSegment.addEventListener('click', async () => {
   if (!hasImage()) return showWarning();
 
-  // Zaten özne ayrılmışsa butona basınca kaldır (Toggle)
   if (hasForegroundSubject()) {
     removeForegroundSubject();
     rawSegmentationResult = null;
@@ -181,7 +180,7 @@ btnSegment.addEventListener('click', async () => {
   if (!origImg) return showWarning();
 
   const selectedEngine = aiEngineSelect ? aiEngineSelect.value : 'mediapipe';
-  showLoading(selectedEngine === 'imgly' ? 'imgly modeli hazırlanıyor...' : 'MediaPipe özneyi ayrıştırıyor...');
+  showLoading('Yapay zeka hazırlanıyor...');
 
   try {
     const maskCanvas = await extractSubject(origImg, selectedEngine, (progressText) => {
@@ -191,11 +190,11 @@ btnSegment.addEventListener('click', async () => {
     rawSegmentationResult = maskCanvas;
     processRawSegmentation(rawSegmentationResult);
     btnSegment.innerText = '🗑️ Özneyi Kaldır';
-    statusText.innerText = 'Özne başarıyla ayrıştırıldı (3D Pop-Out aktif).';
+    statusText.innerText = 'Özne başarıyla ayrıştırıldı.';
   } catch (error) {
     console.error('Özne ayırma hatası:', error);
     statusText.innerText = 'Özne ayrıştırılamadı.';
-    alert('Özne ayrıştırılamadı. Diğer motoru deneyebilir veya manuel maske yükleyebilirsiniz.');
+    alert('Özne ayrıştırılamadı.');
   } finally {
     hideLoading();
   }
