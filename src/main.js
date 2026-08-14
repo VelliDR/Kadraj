@@ -1,4 +1,17 @@
 // src/main.js
+import { registerSW } from 'virtual:pwa-register';
+
+// PWA Servis İşçisini başlat ve güncelleme varsa anında al
+const updateSW = registerSW({
+  onNeedRefresh() {
+    updateSW();
+  },
+  onOfflineReady() {
+    console.log('Uygulama çevrimdışı çalışmaya hazır!');
+  },
+});
+
+// ... [Buradan aşağısı senin eski main.js kodların olacak] ...
 import { 
   initCanvas, 
   loadMainImage, 
