@@ -1,4 +1,3 @@
-// vite.config.js
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
@@ -40,7 +39,8 @@ export default defineConfig({
         ]
       },
       workbox: {
-        // .wasm çıkarıldı; SW sadece temel web dosyalarını önbelleğe alır
+        // .wasm ve AI modelleri KASITLI OLARAK buraya eklenmedi
+        // Böylece telefon Service Worker'ı kurarken patlamaz, modeller anlık indirilir.
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024
       }

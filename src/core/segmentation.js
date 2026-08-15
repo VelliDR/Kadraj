@@ -16,11 +16,11 @@ export async function extractSubject(imageObj, modelName = 'isnet_quint8', onPro
   aiCtx.drawImage(imageObj, 0, 0, aiWorkCanvas.width, aiWorkCanvas.height);
 
   const blob = await new Promise((res) => aiWorkCanvas.toBlob(res, 'image/png'));
-
-  // 2. Model Yapılandırması (Seçilen Modele Göre)
+  
   const config = {
-    publicPath: 'https://staticimgly.com/@imgly/background-removal-data/1.5.7/dist/',
-    model: modelName, // 'isnet_quint8' veya 'isnet_fp16'
+    // DİKKAT: publicPath SATIRINI TAMAMEN SİLDİK!
+    // Kütüphane artık otomatik olarak kendi eksiksiz resmi sunucusunu kullanacak.
+    model: modelName, 
     progress: (key, current, total) => {
       if (onProgress && total > 0) {
         const pct = Math.round((current / total) * 100);
@@ -29,12 +29,14 @@ export async function extractSubject(imageObj, modelName = 'isnet_quint8', onPro
     },
   };
 
+  // 3. Ayrıştırma İşlemi
   const resultBlob = await removeBackground(blob, config);
   const resultUrl = URL.createObjectURL(resultBlob);
 
   return new Promise((resolve) => {
     const cutoutImg = new Image();
     cutoutImg.onload = () => {
+      // Çıktıyı orijinal yüksek çözünürlüklü boyuta geri aktar
       const maskCanvas = document.createElement('canvas');
       maskCanvas.width = imageObj.width;
       maskCanvas.height = imageObj.height;

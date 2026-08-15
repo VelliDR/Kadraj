@@ -1,4 +1,3 @@
-// src/main.js
 import { registerSW } from 'virtual:pwa-register';
 
 // PWA Servis İşçisi Kaydı
@@ -182,10 +181,12 @@ btnSegment.addEventListener('click', async () => {
   const origImg = getOriginalImage();
   if (!origImg) return showWarning();
 
+  // HTML'deki select kutusundan seçili olan modelin "value" değerini al
   const selectedModel = aiEngineSelect ? aiEngineSelect.value : 'isnet_quint8';
   showLoading('Yapay zeka modeli hazırlanıyor...');
 
   try {
+    // Seçilen model doğrudan çıkarıcıya yollanıyor
     const maskCanvas = await extractSubject(origImg, selectedModel, (progressText) => {
       loadingText.innerText = progressText;
     });
@@ -197,7 +198,7 @@ btnSegment.addEventListener('click', async () => {
   } catch (error) {
     console.error('Özne ayırma hatası:', error);
     statusText.innerText = 'Özne ayrıştırılamadı.';
-    alert('Özne ayrıştırılamadı. Farklı bir görsel veya manuel maske deneyebilirsiniz.');
+    alert('Özne ayrıştırılamadı. Farklı bir model veya görsel deneyebilirsiniz.');
   } finally {
     hideLoading();
   }
