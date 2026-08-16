@@ -20,7 +20,7 @@ import { SHAPES } from './core/shapes.js';
 import { generatePixelMaskCanvas } from './core/pixelMask.js';
 import { extractSubject } from './core/segmentation.js';
 
-// DOM Elemanları (Aynı kalıyor)
+// DOM Elemanları
 const statusText = document.getElementById('statusText');
 const canvasContainer = document.getElementById('canvas-container');
 const loadingOverlay = document.getElementById('loadingOverlay');
@@ -37,6 +37,11 @@ const btnDeleteText = document.getElementById('btnDeleteText');
 
 const chkSubjectShadow = document.getElementById('chkSubjectShadow');
 const subjShadowColor = document.getElementById('subjShadowColor');
+
+// Kritik durum değişkenleri
+let customMaskRawImg = null;
+let isMaskInverted = false;
+let rawSegmentationResult = null;
 
 // =========================================================
 // YENİ MİMARİ: YATAY SİLİNDİR KADRAN MOTORU (Interactive Dial)
@@ -198,7 +203,7 @@ setupDial({
 });
 
 // =========================================================
-// YARDIMCI FONKSİYONLAR VE EVENT LİSTENER'LAR (Aynı Kalıyor)
+// YARDIMCI FONKSİYONLAR VE EVENT LİSTENER'LAR
 // =========================================================
 
 function showLoading(msg) {
