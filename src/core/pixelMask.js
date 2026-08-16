@@ -6,10 +6,8 @@ export function generatePixelMaskCanvas(img, width, height, invert = false) {
   mCanvas.height = height;
   const mCtx = mCanvas.getContext('2d');
 
-  const scale = Math.max(width / img.width, height / img.height);
-  const x = (width - img.width * scale) / 2;
-  const y = (height - img.height * scale) / 2;
-  mCtx.drawImage(img, x, y, img.width * scale, img.height * scale);
+  // Resmi deforme etmeden maske tuvaline bas
+  mCtx.drawImage(img, 0, 0, width, height);
 
   const imgData = mCtx.getImageData(0, 0, width, height);
   const d = imgData.data;

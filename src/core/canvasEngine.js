@@ -4,8 +4,10 @@ import { calculateOffsetFromAngle, createTintedSilhouette } from './shadowEngine
 import { refineSegmentationMask } from './edgeRefineEngine.js';
 import { exportHighResolutionPNG } from './exportEngine.js';
 
-export const STAGE_WIDTH = 360;
-export const STAGE_HEIGHT = 509;
+// Sabit STAGE yükseklik sınırını kaldırdık. 
+// Sadece genişlik sabit (mobil ekran genişliğine göre), yükseklik akışkan olacak.
+export let STAGE_WIDTH = 360; 
+export let STAGE_HEIGHT = 509; // Bu değer artık fotoğraf yüklendiğinde dinamik değişecek.
 
 let stage, bgLayer, photoLayer, subjectShadowLayer, textLayer, fgLayer;
 let bgRect, maskGroup, shapeShadowNode;
@@ -30,10 +32,16 @@ let currentEdgeOverlap = 0.8;
 export function initCanvas(containerId, onTextSelect) {
   onTextSelectCallback = onTextSelect;
 
+  // Konteynerin genişliğini alarak STAGE_WIDTH'i otomatik uyarla
+  const container = document.getElementById(containerId);
+  if (container) {
+    STAGE_WIDTH = container.clientWidth || 360;
+  }
+
   stage = new Konva.Stage({
     container: containerId,
     width: STAGE_WIDTH,
-    height: STAGE_HEIGHT,
+    height: STAGE_HEIGHT, // Başlangıçta default, resim yüklenince değişecek
   });
 
   bgLayer = new Konva.Layer();
@@ -55,11 +63,12 @@ export function initCanvas(containerId, onTextSelect) {
   bgLayer.add(bgRect);
   bgLayer.batchDraw();
 
-  // Şekil Gölgesi Taşıyıcı Düğümü (Konva.Shape)
+  // Şekil Gölgesi Taşıyıcı Düğümü
   shapeShadowNode = new Konva.Shape({
     sceneFunc: (ctx, shape) => {
       if (currentVectorShapeFunc) {
-        currentVectorShapeFunc(ctx._context || ctx);
+        // Vektör çizimini ekranın yeni boyutlarına göre ortalaması için
+        currentVectorShapeFunc(ctx._context || ctx, STAGE_WIDTH, STAGE_HEIGHT);
         ctx.fillShape(shape);
       }
     },
@@ -77,12 +86,72 @@ export function initCanvas(containerId, onTextSelect) {
   });
 }
 
+// --- AKIŞKAN (FLUID) TUVAL GÜNCELLEMESİ ---
+function updateStageDimensions(imageObj) {
+  if (!imageObj) return;
+  
+  // Resmin orijinal aspect ratio'sunu bul
+  const aspectRatio = imageObj.width / imageObj.height;
+  
+  // Tuvalin yüksekliğini resmin oranına göre akışkan olarak hesapla
+  STAGE_HEIGHT = STAGE_WIDTH / aspectRatio;
+  
+  // Tuvali, Arka planı ve Container'ı yeni boyuta uyarla
+  stage.height(STAGE_HEIGHT);
+  bgRect.height(STAGE_HEIGHT);
+  
+  // Maske Grubu ve Gölge taşıyıcılarını merkezle
+  maskGroup.width(STAGE_WIDTH);
+  maskGroup.height(STAGE_HEIGHT);
+  
+  stage.batchDraw();
+}
+
+// --- GÖRSEL YÜKLEME ---
+export function loadMainImage(imgObj) {
+  resetEngine();
+  originalImageObj = imgObj;
+
+  // 1. Yeni Mimaride Tuvali Resmin Oranına Göre Esnet!
+  updateStageDimensions(imgObj);
+
+  // 2. Resmi Tuvale Tam (Fit) Oturt
+  baseScale = STAGE_WIDTH / imgObj.width;
+
+  currentImageNode = new Konva.Image({
+    image: imgObj,
+    x: 0,
+    y: 0,
+    width: STAGE_WIDTH,
+    height: STAGE_HEIGHT,
+    draggable: true,
+  });
+
+  currentImageNode.on('dragmove', () => {
+    if (foregroundImageNode) {
+      foregroundImageNode.position(currentImageNode.position());
+      fgLayer.batchDraw();
+    }
+    if (subjectShadowNode) {
+      const offset = calculateOffsetFromAngle(subjectShadowConfig.angle, subjectShadowConfig.distance);
+      subjectShadowNode.position({
+        x: currentImageNode.x() + offset.x,
+        y: currentImageNode.y() + offset.y,
+      });
+      subjectShadowLayer.batchDraw();
+    }
+  });
+
+  maskGroup.add(currentImageNode);
+  photoLayer.batchDraw();
+}
+
 // --- TİPOGRAFİ ---
 export function addTextNode({ text, fontFamily, fill, fontSize, rotation }) {
   const textNode = new Konva.Text({
     text,
-    x: 180,
-    y: 120,
+    x: STAGE_WIDTH / 2, // Hep merkeze ekle
+    y: STAGE_HEIGHT / 2,
     fontSize: fontSize || 32,
     fontFamily,
     fill,
@@ -134,41 +203,6 @@ export function deleteSelectedText() {
   }
 }
 
-// --- GÖRSEL YÜKLEME ---
-export function loadMainImage(imgObj) {
-  resetEngine();
-  originalImageObj = imgObj;
-
-  baseScale = Math.max(STAGE_WIDTH / imgObj.width, STAGE_HEIGHT / imgObj.height);
-
-  currentImageNode = new Konva.Image({
-    image: imgObj,
-    x: (STAGE_WIDTH - imgObj.width * baseScale) / 2,
-    y: (STAGE_HEIGHT - imgObj.height * baseScale) / 2,
-    width: imgObj.width * baseScale,
-    height: imgObj.height * baseScale,
-    draggable: true,
-  });
-
-  currentImageNode.on('dragmove', () => {
-    if (foregroundImageNode) {
-      foregroundImageNode.position(currentImageNode.position());
-      fgLayer.batchDraw();
-    }
-    if (subjectShadowNode) {
-      const offset = calculateOffsetFromAngle(subjectShadowConfig.angle, subjectShadowConfig.distance);
-      subjectShadowNode.position({
-        x: currentImageNode.x() + offset.x,
-        y: currentImageNode.y() + offset.y,
-      });
-      subjectShadowLayer.batchDraw();
-    }
-  });
-
-  maskGroup.add(currentImageNode);
-  photoLayer.batchDraw();
-}
-
 // --- ÖZNE, KENAR BİNDİRME VE GÖLGE MOTORU ---
 export function processRawSegmentation(rawMask) {
   rawSegmentationMask = rawMask;
@@ -216,7 +250,7 @@ export function applyForegroundSubject(cutImgObj) {
     image: cutImgObj,
     x: currentImageNode.x(),
     y: currentImageNode.y(),
-    width: currentImageNode.width(),
+    width: currentImageNode.width(), // Tuval değil, resmin güncel zoom/scale boyutu!
     height: currentImageNode.height(),
     draggable: false,
     listening: false,
@@ -306,7 +340,9 @@ function renderSubjectShadow() {
 export function applyVectorShape(shapeFunction) {
   clearCustomPixelMask();
   currentVectorShapeFunc = shapeFunction;
-  maskGroup.clipFunc(shapeFunction);
+  
+  // Şekli çizerken güncel STAGE boyutlarını da yolla ki tam otursun
+  maskGroup.clipFunc((ctx) => shapeFunction(ctx, STAGE_WIDTH, STAGE_HEIGHT));
   updateShapeShadow({});
   photoLayer.batchDraw();
 }
@@ -322,7 +358,7 @@ export function applyPixelMaskNode(maskCanvas) {
     x: 0,
     y: 0,
     width: STAGE_WIDTH,
-    height: STAGE_HEIGHT,
+    height: STAGE_HEIGHT, // Artık resmin dinamik yüksekliğine göre oturacak
     listening: false,
   });
 
@@ -338,18 +374,30 @@ export function setZoom(zoomFactor) {
   const w = originalImageObj.width * baseScale * zoomFactor;
   const h = originalImageObj.height * baseScale * zoomFactor;
 
+  // Zoom yaparken resmi her zaman merkezde tut
+  const x = (STAGE_WIDTH - w) / 2;
+  const y = (STAGE_HEIGHT - h) / 2;
+
   currentImageNode.width(w);
   currentImageNode.height(h);
+  currentImageNode.x(x);
+  currentImageNode.y(y);
 
   if (foregroundImageNode) {
     foregroundImageNode.width(w);
     foregroundImageNode.height(h);
+    foregroundImageNode.position(currentImageNode.position());
     fgLayer.batchDraw();
   }
 
   if (subjectShadowNode) {
+    const offset = calculateOffsetFromAngle(subjectShadowConfig.angle, subjectShadowConfig.distance);
     subjectShadowNode.width(w);
     subjectShadowNode.height(h);
+    subjectShadowNode.position({
+      x: currentImageNode.x() + offset.x,
+      y: currentImageNode.y() + offset.y,
+    });
     subjectShadowLayer.batchDraw();
   }
 
@@ -365,7 +413,8 @@ export function toggleBackground() {
 
 export function exportPNG() {
   deselectText();
-  return exportHighResolutionPNG(stage, STAGE_WIDTH);
+  // Artık dışa aktarırken de organik (esnek) yükseklik referans alınıyor
+  return exportHighResolutionPNG(stage, STAGE_WIDTH, STAGE_HEIGHT); 
 }
 
 export function hasImage() { return currentImageNode !== null; }
