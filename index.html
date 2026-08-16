@@ -8,21 +8,14 @@
     <!-- Favicon & İkonlar -->
     <link rel="icon" type="image/png" href="./icon-192.png" />
     <link rel="apple-touch-icon" href="./icon-192.png" />
-
-    <!-- PWA & Mobil Uyumluluk Meta Etiketleri -->
     <meta name="theme-color" content="#191c20" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Kadraj" />
 
-    <!-- Tipografi Fontları -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Cinzel:wght@600;800&family=Cormorant+Garamond:ital,wght@0,500;0,700;1,400;1,600&family=Lora:ital,wght@0,500;0,700;1,400&family=Montserrat:wght@400;600&family=Playfair+Display:ital,wght@0,600;0,900;1,400&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
-    
-    <script type="module" crossorigin src="./assets/index-CAyA5ReE.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-B1TV6vMc.css">
+    <script type="module" crossorigin src="./assets/index-Dywk17At.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-D4TTFx37.css">
   <link rel="manifest" href="./manifest.webmanifest"></head>
   <body>
     <div id="app">
@@ -30,177 +23,196 @@
       <header class="app-bar">
         <div class="brand">
           <span class="brand-badge">ATÖLYE</span>
-          <span class="brand-title">Mizanpaj & Kırpma (300 DPI)</span>
+          <span class="brand-title">Mizanpaj & Kırpma</span>
         </div>
 
         <div class="app-bar-actions">
-          <div class="zoom-pill" title="Ölçek">
-            <span class="zoom-icon">🔍</span>
-            <input type="range" id="zoomRange" min="0.3" max="3" step="0.05" value="1" />
+          <!-- Üst Bar İçin Daraltılmış Mini Zoom Kadranı -->
+          <div class="dial-container" style="width: 100px; margin: 0 5px;">
+            <div class="dial-header" style="margin-bottom: 2px;">
+              <span style="font-size: 9px;">🔍 ÖLÇEK</span>
+              <span class="dial-value" id="zoomDisplay" style="font-size: 10px;">1.00x</span>
+            </div>
+            <div class="dial-track" id="zoomRange" style="height: 22px; border-radius: 4px;">
+              <div class="dial-center-mark"></div>
+            </div>
           </div>
-          <button id="btnToggleBg" class="m3-btn m3-btn-tonal" title="Arka Plan">🏁 Şeffaf</button>
-          <button id="btnReset" class="m3-btn m3-btn-terracotta" title="Sıfırla">Sıfırla</button>
-          <button id="btnDownload" class="m3-btn m3-btn-sage" title="300 DPI Kaydet">⬇️ 300 DPI</button>
+          
+          <button id="btnToggleBg" class="m3-btn m3-btn-tonal">🏁 Şeffaf</button>
+          <button id="btnReset" class="m3-btn m3-btn-terracotta">Sıfırla</button>
+          <button id="btnDownload" class="m3-btn m3-btn-sage">⬇️ Kaydet</button>
         </div>
       </header>
 
       <!-- 2. Merkez Çalışma Sahnesi -->
       <main class="workspace">
         <div id="canvas-container"></div>
-        
-        <!-- Yükleme Göstergesi -->
         <div id="loadingOverlay" class="loading-overlay hidden">
           <div class="m3-spinner"></div>
           <p id="loadingText">İşleniyor...</p>
         </div>
       </main>
 
-      <!-- 3. İki Sütunlu Alt Kontrol Paneli -->
+      <!-- 3. Alt Kontrol Paneli -->
       <footer class="control-dock">
-        <!-- SOL SÜTUN / MOBİLDE ÜST ŞERİT: Menü Navigasyonu -->
         <nav class="dock-sidebar">
-          <button class="dock-tab active" data-tab="tab-layers">
-            <span class="dock-tab-icon">🖼️</span>
-            <span class="dock-tab-label">Katman</span>
-          </button>
-          <button class="dock-tab" data-tab="tab-typography">
-            <span class="dock-tab-icon">✍️</span>
-            <span class="dock-tab-label">Yazı</span>
-          </button>
-          <button class="dock-tab" data-tab="tab-shadows">
-            <span class="dock-tab-icon">🎭</span>
-            <span class="dock-tab-label">Gölge</span>
-          </button>
-          <button class="dock-tab" data-tab="tab-shapes">
-            <span class="dock-tab-icon">📐</span>
-            <span class="dock-tab-label">Şablon</span>
-          </button>
+          <button class="dock-tab active" data-tab="tab-layers"><span class="dock-tab-icon">🖼️</span> Katman</button>
+          <button class="dock-tab" data-tab="tab-typography"><span class="dock-tab-icon">✍️</span> Yazı</button>
+          <button class="dock-tab" data-tab="tab-shadows"><span class="dock-tab-icon">🎭</span> Gölge</button>
+          <button class="dock-tab" data-tab="tab-shapes"><span class="dock-tab-icon">📐</span> Şablon</button>
         </nav>
 
-        <!-- SAĞ SÜTUN / MOBİLDE ALT ALAN: Menü İçeriği -->
         <div class="dock-content">
-          <!-- 1. Katman & AI Paneli (TEMİZLENMİŞ KISIM) -->
+          <!-- 1. Katman Paneli -->
           <div class="dock-panel active" id="tab-layers">
             <div class="panel-row">
-              <label class="m3-btn m3-btn-sand file-label">
-                📷 Görsel Seç
-                <input type="file" id="imageInput" accept="image/*,.heic,.heif" />
-              </label>
-
-              <label class="m3-btn m3-btn-tonal file-label">
-                📁 Resimden Maske
-                <input type="file" id="maskInput" accept="image/*,.heic,.heif" />
-              </label>
+              <label class="m3-btn m3-btn-sand file-label">📷 Görsel Seç<input type="file" id="imageInput" accept="image/*,.heic,.heif" /></label>
+              <label class="m3-btn m3-btn-tonal file-label">📁 Resimden Maske<input type="file" id="maskInput" accept="image/*,.heic,.heif" /></label>
             </div>
-            
             <div class="panel-row">
-              <button id="btnInvertMask" class="m3-btn m3-btn-tonal hidden">🔄 Maskeyi Ters Çevir</button>
-              
-       <select id="aiEngineSelect" class="m3-select" title="Yapay Zeka Motoru">
-  <option value="isnet_quint8" selected>🎨 Standart / Mobil (8-Bit)</option>
-  <option value="isnet_fp16">💎 Hassas Heykel (16-Bit)</option>
-  <option value="isnet">🔥 Ultra Stüdyo (32-Bit FP32)</option>
-</select>
-
+              <button id="btnInvertMask" class="m3-btn m3-btn-tonal hidden">🔄 Ters Çevir</button>
+               <select id="aiEngineSelect" class="m3-select" title="Yapay Zeka Motoru">
+                  <option value="isnet_quint8" selected>🎨 Standart (8-Bit)</option>
+                  <option value="isnet_fp16">💎 Hassas (16-Bit)</option>
+                  <option value="isnet">🔥 Ultra (32-Bit)</option>
+               </select>
               <button id="btnSegment" class="m3-btn m3-btn-lavender">✨ Özneyi Ayır</button>
             </div>
           </div>
 
-          <!-- 2. Tipografi & Açı Paneli -->
+          <!-- 2. Tipografi Paneli -->
           <div class="dock-panel" id="tab-typography">
             <div class="panel-row">
               <input type="text" id="textInput" class="m3-input" placeholder="Dize veya başlık..." value="Taşın İçindeki Zaman" />
-              
               <select id="fontSelect" class="m3-select">
-                <option value="'Cormorant Garamond', serif">Cormorant (Şiirsel)</option>
-                <option value="'Lora', serif">Lora (Edebi)</option>
-                <option value="'Caveat', cursive">Caveat (El Yazısı)</option>
-                <option value="'Playfair Display', serif">Playfair (Klasik)</option>
-                <option value="'Cinzel', serif">Cinzel (Antik)</option>
-                <option value="'Montserrat', sans-serif">Montserrat (Modern)</option>
-                <option value="'Space Grotesk', sans-serif">Space Grotesk (Dinamik)</option>
+                <option value="'Cormorant Garamond', serif">Cormorant</option>
+                <option value="'Lora', serif">Lora</option>
+                <option value="'Caveat', cursive">Caveat</option>
+                <option value="'Playfair Display', serif">Playfair</option>
+                <option value="'Cinzel', serif">Cinzel</option>
+                <option value="'Montserrat', sans-serif">Montserrat</option>
+                <option value="'Space Grotesk', sans-serif">Space Grotesk</option>
               </select>
             </div>
-
             <div class="panel-row">
-              <div class="size-pill" title="Yazı Boyutu">
-                <span class="size-label">Aa</span>
-                <input type="range" id="fontSizeRange" min="14" max="90" step="1" value="32" />
-                <span id="fontSizeDisplay">32px</span>
+              <!-- YAZI BOYUTU KADRANI -->
+              <div class="dial-container">
+                <div class="dial-header">
+                  <span>BOYUT</span>
+                  <span class="dial-value" id="fontSizeDisplay">32px</span>
+                </div>
+                <div class="dial-track" id="fontSizeRange">
+                  <div class="dial-center-mark"></div>
+                </div>
               </div>
 
-              <div class="dial-pill" title="360° Döndürme">
-                <span class="dial-icon">🔄</span>
-                <input type="range" id="textRotationRange" min="0" max="360" step="1" value="0" />
-                <span id="textRotationDisplay">0°</span>
+              <!-- DÖNDÜRME KADRANI -->
+              <div class="dial-container">
+                <div class="dial-header">
+                  <span>DÖNDÜRME</span>
+                  <span class="dial-value" id="textRotationDisplay">0°</span>
+                </div>
+                <div class="dial-track" id="textRotationRange">
+                  <div class="dial-center-mark"></div>
+                </div>
               </div>
 
-              <div class="color-wrap" title="Yazı Rengi">
+              <!-- Renk & İşlem Butonları -->
+              <div class="color-wrap" title="Yazı Rengi" style="margin-left: 10px;">
                 <input type="color" id="textColor" value="#1a1a1a" />
               </div>
-
               <button id="btnAddText" class="m3-btn m3-btn-sand">➕ Ekle</button>
               <button id="btnDeleteText" class="m3-btn m3-btn-terracotta hidden">🗑️ Sil</button>
             </div>
           </div>
 
-          <!-- 3. Gölgeler & Bindirme Paneli -->
+          <!-- 3. Gölgeler Paneli (TÜMÜ YATAY KADRAN) -->
           <div class="dock-panel" id="tab-shadows">
             <div class="panel-row">
-              <div class="shadow-subgroup">
-                <span class="group-label">✂️ Yumuşatma:</span>
-                <div class="dial-pill" title="Yapay Zeka Kenar Bindirme">
-                  <input type="range" id="edgeOverlapRange" min="0.5" max="5.0" step="0.1" value="0.8" />
-                  <span id="edgeOverlapDisplay">%0.8</span>
+              
+              <!-- Kenar Yumuşatma Kadranı -->
+              <div class="dial-container" style="max-width: 130px;">
+                <div class="dial-header">
+                  <span>✂️ YUMUŞATMA</span>
+                  <span class="dial-value" id="edgeOverlapDisplay">%0.8</span>
+                </div>
+                <div class="dial-track" id="edgeOverlapRange">
+                  <div class="dial-center-mark"></div>
                 </div>
               </div>
 
               <div class="divider-v"></div>
 
+              <!-- Şekil Gölge Grubu -->
               <div class="shadow-subgroup">
-                <span class="group-label">📐 Şekil Gölgesi:</span>
-                <div class="dial-pill">
-                  <span>Açı:</span>
-                  <input type="range" id="shapeShadowAngle" min="0" max="360" step="5" value="45" />
-                  <span id="shapeShadowAngleDisplay">45°</span>
+                <!-- Şekil Açı -->
+                <div class="dial-container">
+                  <div class="dial-header">
+                    <span>📐 AÇI</span>
+                    <span class="dial-value" id="shapeShadowAngleDisplay">45°</span>
+                  </div>
+                  <div class="dial-track" id="shapeShadowAngle">
+                    <div class="dial-center-mark"></div>
+                  </div>
                 </div>
-                <div class="dial-pill">
-                  <span>Uzaklık:</span>
-                  <input type="range" id="shapeShadowDist" min="0" max="40" step="1" value="0" />
-                  <span id="shapeShadowDistDisplay">0px</span>
+                <!-- Şekil Mesafe -->
+                <div class="dial-container">
+                  <div class="dial-header">
+                    <span>MESAFE</span>
+                    <span class="dial-value" id="shapeShadowDistDisplay">0px</span>
+                  </div>
+                  <div class="dial-track" id="shapeShadowDist">
+                    <div class="dial-center-mark"></div>
+                  </div>
                 </div>
-                <div class="dial-pill">
-                  <span>Blur:</span>
-                  <input type="range" id="shapeShadowBlur" min="0" max="30" step="1" value="0" />
+                <!-- Şekil Blur -->
+                <div class="dial-container">
+                  <div class="dial-header">
+                    <span>BLUR</span>
+                    <span class="dial-value" id="shapeShadowBlurDisplay">0px</span>
+                  </div>
+                  <div class="dial-track" id="shapeShadowBlur">
+                    <div class="dial-center-mark"></div>
+                  </div>
                 </div>
               </div>
             </div>
-
+            
             <div class="panel-row">
-              <label class="toggle-pill">
-                <input type="checkbox" id="chkSubjectShadow" />
-                <span>👤 Silüet Gölgesi</span>
+              <label class="toggle-pill" style="margin-top: 10px;">
+                <input type="checkbox" id="chkSubjectShadow" /><span>👤 Silüet</span>
               </label>
-
-              <div class="dial-pill">
-                <span>Açı:</span>
-                <input type="range" id="subjShadowAngle" min="0" max="360" step="5" value="135" />
-                <span id="subjShadowAngleDisplay">135°</span>
+              
+              <!-- Silüet Açı -->
+              <div class="dial-container">
+                <div class="dial-header">
+                  <span>AÇI</span>
+                  <span class="dial-value" id="subjShadowAngleDisplay">135°</span>
+                </div>
+                <div class="dial-track" id="subjShadowAngle">
+                  <div class="dial-center-mark"></div>
+                </div>
               </div>
-
-              <div class="dial-pill">
-                <span>Mesafe:</span>
-                <input type="range" id="subjShadowDist" min="0" max="50" step="1" value="14" />
-                <span id="subjShadowDistDisplay">14px</span>
+              
+              <!-- Silüet Mesafe -->
+              <div class="dial-container">
+                <div class="dial-header">
+                  <span>MESAFE</span>
+                  <span class="dial-value" id="subjShadowDistDisplay">14px</span>
+                </div>
+                <div class="dial-track" id="subjShadowDist">
+                  <div class="dial-center-mark"></div>
+                </div>
               </div>
-
-              <div class="color-wrap" title="Silüet Rengi">
+              
+              <!-- Silüet Renk -->
+              <div class="color-wrap" title="Silüet Rengi" style="margin-top: 15px; margin-left: 10px;">
                 <input type="color" id="subjShadowColor" value="#1a1a1a" />
               </div>
             </div>
           </div>
 
-          <!-- 4. Şablonlar Paneli -->
+          <!-- 4. Şablonlar Paneli (Tam Liste) -->
           <div class="dock-panel" id="tab-shapes">
             <div class="shape-scroll" id="shapeButtons">
               <button class="shape-pill" data-shape="fluidRiver">🌊 Akışkan Nehir</button>
@@ -228,13 +240,7 @@
           </div>
         </div>
       </footer>
-
-      <!-- 4. Durum Şeridi -->
-      <div class="status-bar">
-        <p id="statusText">Hazır. Bir görsel seçerek başlayın.</p>
-      </div>
+      <div class="status-bar"><p id="statusText">Hazır. Bir görsel seçerek başlayın.</p></div>
     </div>
-
-    <!-- Ana Uygulama Modülü -->
   </body>
 </html>
