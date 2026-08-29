@@ -78,7 +78,7 @@ Kurulumdan önce bilgisayarınızda şunların yüklü olması gerekir:
 
 1. Projeyi klonlayın:
 ```bash
-git clone https://github.com/kullaniciadi/kadraj.git
+git clone https://github.com/VelliDR/kadraj.git
 cd kadraj
 
 ```
