@@ -1,6 +1,7 @@
-// src/core/shapes.js
+// src/core/shapes.ts
+import type { ShapeFunction } from '../types';
 
-export const SHAPES = {
+export const SHAPES: Record<string, ShapeFunction> = {
   // --- AKIŞKAN VE ORGANİK ---
   fluidRiver: (ctx, w, h) => {
     ctx.beginPath();

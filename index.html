@@ -37,14 +37,36 @@
             </div>
           </div>
           
+          <select id="presetSelect" class="m3-select" title="Sayfa Boyutu" style="font-size: 11px; padding: 4px 6px;">
+            <option value="auto">📐 Resim Oranı</option>
+            <option value="a4_p">📄 A4 Dikey</option>
+            <option value="a4_l">📖 A4 Yatay</option>
+            <option value="a5_p">📕 A5 Dergi</option>
+            <option value="sq_1_1">🔲 Kare 1:1</option>
+            <option value="story_9_16">📱 Hikaye 9:16</option>
+            <option value="book_4_5">📚 Kitap 4:5</option>
+          </select>
+
+          <!-- Geri Al / İleri Al -->
+          <button id="btnUndo" class="m3-btn m3-btn-tonal" title="Geri Al (Ctrl+Z)" disabled>↩️</button>
+          <button id="btnRedo" class="m3-btn m3-btn-tonal" title="İleri Al (Ctrl+Y)" disabled>↪️</button>
+
           <button id="btnToggleBg" class="m3-btn m3-btn-tonal">🏁 Şeffaf</button>
           <button id="btnReset" class="m3-btn m3-btn-terracotta">Sıfırla</button>
-          <button id="btnDownload" class="m3-btn m3-btn-sage">⬇️ Kaydet</button>
+          <button id="btnDownload" class="m3-btn m3-btn-sage">⬇️ Dışa Aktar</button>
         </div>
       </header>
 
       <!-- 2. Merkez Çalışma Sahnesi -->
       <main class="workspace">
+        <div id="draftBanner" class="draft-banner hidden">
+          <span>💾 Kayıtlı taslağınız bulundu.</span>
+          <div class="draft-banner-actions">
+            <button id="btnRestoreDraft" class="m3-btn m3-btn-sage">Geri Yükle</button>
+            <button id="btnDismissDraft" class="m3-btn m3-btn-tonal">Yoksay</button>
+          </div>
+        </div>
+
         <div id="canvas-container"></div>
         <div id="loadingOverlay" class="loading-overlay hidden">
           <div class="m3-spinner"></div>
@@ -59,6 +81,7 @@
           <button class="dock-tab" data-tab="tab-typography"><span class="dock-tab-icon">✍️</span> Yazı</button>
           <button class="dock-tab" data-tab="tab-shadows"><span class="dock-tab-icon">🎭</span> Gölge</button>
           <button class="dock-tab" data-tab="tab-shapes"><span class="dock-tab-icon">📐</span> Şablon</button>
+          <button class="dock-tab" data-tab="tab-effects"><span class="dock-tab-icon">✨</span> Efekt & Doku</button>
         </nav>
 
         <div class="dock-content">
@@ -76,6 +99,17 @@
                   <option value="isnet">🔥 Ultra (32-Bit)</option>
                </select>
               <button id="btnSegment" class="m3-btn m3-btn-lavender">✨ Özneyi Ayır</button>
+            </div>
+
+            <!-- Faz 3: Katman Listesi (Layer Stack) -->
+            <div class="layer-stack-container">
+              <div class="layer-stack-header">
+                <span>📑 KATMAN HİYERARŞİSİ</span>
+                <span id="layerCount" style="color: var(--m3-pastel-sand);">0 Katman</span>
+              </div>
+              <div class="layer-list" id="layerList">
+                <p class="layer-empty">Görsel veya metin ekleyin.</p>
+              </div>
             </div>
           </div>
 
@@ -122,6 +156,31 @@
               </div>
               <button id="btnAddText" class="m3-btn m3-btn-sand">➕ Ekle</button>
               <button id="btnDeleteText" class="m3-btn m3-btn-terracotta hidden">🗑️ Sil</button>
+            </div>
+
+            <!-- Faz 3: Zengin Tipografi (Hizalama, Stil, Harf Aralığı) -->
+            <div class="panel-row" style="margin-top: 4px;">
+              <div class="m3-button-group" title="Metin Hizalama">
+                <button type="button" class="group-btn" id="btnAlignLeft" data-align="left" title="Sola">⫷</button>
+                <button type="button" class="group-btn active" id="btnAlignCenter" data-align="center" title="Ortala">⫸⫷</button>
+                <button type="button" class="group-btn" id="btnAlignRight" data-align="right" title="Sağa">⫸</button>
+              </div>
+
+              <div class="m3-button-group" title="Metin Stili">
+                <button type="button" class="group-btn" id="btnBold" title="Kalın (Bold)"><b>B</b></button>
+                <button type="button" class="group-btn" id="btnItalic" title="İtalik (Italic)"><i>I</i></button>
+              </div>
+
+              <!-- Harf Aralığı Kadranı -->
+              <div class="dial-container" style="max-width: 120px;">
+                <div class="dial-header">
+                  <span>HARF ARALIĞI</span>
+                  <span class="dial-value" id="letterSpacingDisplay">0px</span>
+                </div>
+                <div class="dial-track" id="letterSpacingRange">
+                  <div class="dial-center-mark"></div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -237,10 +296,172 @@
               <button class="shape-pill" data-shape="windowGrid">🪟 4'lü Pencere</button>
             </div>
           </div>
+
+          <!-- 5. Faz 5: Efektler ve Kağıt Dokuları Paneli -->
+          <div class="dock-panel" id="tab-effects">
+            <!-- Kağıt Dokusu Satırı -->
+            <div class="panel-row">
+              <span class="panel-section-title">📜 KAĞIT DOKUSU:</span>
+              <select id="textureSelect" class="m3-select" style="min-width: 140px;">
+                <option value="none">Dokusuz (Yok)</option>
+                <option value="parchment">📜 Parşömen</option>
+                <option value="newsprint">📰 Saman Kağıdı</option>
+                <option value="coated">✨ Kuşe Kağıt</option>
+                <option value="grain">🎞️ 35mm Gren</option>
+                <option value="linen">🧶 Keten Tuval</option>
+              </select>
+
+              <select id="textureBlendSelect" class="m3-select" style="min-width: 110px;">
+                <option value="multiply">Çarpma (Doğal)</option>
+                <option value="overlay">Kaplama</option>
+                <option value="soft-light">Yumuşak Işık</option>
+                <option value="screen">Açıklaştır</option>
+              </select>
+
+              <!-- Doku Opaklığı Kadranı -->
+              <div class="dial-container" style="max-width: 120px;">
+                <div class="dial-header">
+                  <span>OPAKLIK</span>
+                  <span class="dial-value" id="textureOpacityDisplay">%25</span>
+                </div>
+                <div class="dial-track" id="textureOpacityRange">
+                  <div class="dial-center-mark"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Fotoğraf Ayarları Satırı -->
+            <div class="panel-row" style="margin-top: 4px;">
+              <!-- Parlaklık -->
+              <div class="dial-container" style="max-width: 110px;">
+                <div class="dial-header">
+                  <span>PARLAKLIK</span>
+                  <span class="dial-value" id="brightnessDisplay">0</span>
+                </div>
+                <div class="dial-track" id="brightnessRange">
+                  <div class="dial-center-mark"></div>
+                </div>
+              </div>
+
+              <!-- Kontrast -->
+              <div class="dial-container" style="max-width: 110px;">
+                <div class="dial-header">
+                  <span>KONTRAST</span>
+                  <span class="dial-value" id="contrastDisplay">0</span>
+                </div>
+                <div class="dial-track" id="contrastRange">
+                  <div class="dial-center-mark"></div>
+                </div>
+              </div>
+
+              <!-- Doygunluk -->
+              <div class="dial-container" style="max-width: 110px;">
+                <div class="dial-header">
+                  <span>DOYGUNLUK</span>
+                  <span class="dial-value" id="saturationDisplay">0</span>
+                </div>
+                <div class="dial-track" id="saturationRange">
+                  <div class="dial-center-mark"></div>
+                </div>
+              </div>
+
+              <!-- Analog Gren -->
+              <div class="dial-container" style="max-width: 110px;">
+                <div class="dial-header">
+                  <span>GREN</span>
+                  <span class="dial-value" id="noiseDisplay">0</span>
+                </div>
+                <div class="dial-track" id="noiseRange">
+                  <div class="dial-center-mark"></div>
+                </div>
+              </div>
+
+              <!-- Hızlı Ton Filtreleri -->
+              <div class="m3-button-group" title="Hızlı Filtre">
+                <button type="button" class="group-btn" id="btnFilterReset" title="Doğal / Sıfırla">Norm</button>
+                <button type="button" class="group-btn" id="btnFilterSepia" title="Nostaljik Sepya">Sepya</button>
+                <button type="button" class="group-btn" id="btnFilterMono" title="Siyah-Beyaz">B&W</button>
+              </div>
+            </div>
+
+            <!-- Gelişmiş Kenar İnceltme Satırı (AI Matting / Erode) -->
+            <div class="panel-row" style="margin-top: 4px;">
+              <span class="panel-section-title">✂️ KENAR MATTİNG:</span>
+
+              <!-- Morfolojik Aşındırma / Halo Silme -->
+              <div class="dial-container" style="max-width: 130px;">
+                <div class="dial-header">
+                  <span>HALO SİL (ERODE)</span>
+                  <span class="dial-value" id="erodePixelsDisplay">0px</span>
+                </div>
+                <div class="dial-track" id="erodePixelsRange">
+                  <div class="dial-center-mark"></div>
+                </div>
+              </div>
+
+              <!-- Kenar Yumuşatma Blur -->
+              <div class="dial-container" style="max-width: 130px;">
+                <div class="dial-header">
+                  <span>FEATHER BLUR</span>
+                  <span class="dial-value" id="featherBlurDisplay">0px</span>
+                </div>
+                <div class="dial-track" id="featherBlurRange">
+                  <div class="dial-center-mark"></div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </footer>
+
+      <!-- Faz 4: Dışa Aktarma Modalı (Export Modal) -->
+      <div id="exportModal" class="m3-modal-overlay hidden">
+        <div class="m3-modal-card">
+          <div class="modal-header">
+            <h3>📦 Mizanpajı Dışa Aktar</h3>
+            <button id="btnCloseModal" class="modal-close-btn">&times;</button>
+          </div>
+          <div class="modal-body">
+            <span class="modal-label">Çıktı Formatı:</span>
+            <div class="export-format-grid">
+              <label class="format-card active">
+                <input type="radio" name="exportFormat" value="png" checked />
+                <span class="format-title">💎 PNG</span>
+                <span class="format-desc">300 DPI Kayıpsız Matbaa</span>
+              </label>
+              <label class="format-card">
+                <input type="radio" name="exportFormat" value="pdf" />
+                <span class="format-title">📕 PDF</span>
+                <span class="format-desc">Baskıya Hazır Vektörel Belge</span>
+              </label>
+              <label class="format-card">
+                <input type="radio" name="exportFormat" value="webp" />
+                <span class="format-title">🌐 WebP</span>
+                <span class="format-desc">Web & Dijital Yayın</span>
+              </label>
+              <label class="format-card">
+                <input type="radio" name="exportFormat" value="svg" />
+                <span class="format-title">📐 SVG</span>
+                <span class="format-desc">Vektör Maske Yolu</span>
+              </label>
+            </div>
+
+            <div class="modal-options">
+              <label class="toggle-pill" style="margin-top: 10px;">
+                <input type="checkbox" id="chkCropMarks" />
+                <span>✂️ Matbaa Kesim Çizgileri & Taşma Payı (Bleed)</span>
+              </label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button id="btnCancelExport" class="m3-btn m3-btn-tonal">Vazgeç</button>
+            <button id="btnConfirmExport" class="m3-btn m3-btn-sage">⬇️ Şimdi İndir</button>
+          </div>
+        </div>
+      </div>
+
       <div class="status-bar"><p id="statusText">Hazır. Bir görsel seçerek başlayın.</p></div>
     </div>
-    <script type="module" src="./src/main.js"></script>
+    <script type="module" src="./src/main.ts"></script>
   </body>
 </html>

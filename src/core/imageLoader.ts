@@ -1,16 +1,26 @@
-// src/core/imageLoader.js
-import heic2anyModule from 'heic2any';
+// src/core/imageLoader.ts
 
-export async function processImageFile(file, onProgress) {
+export async function processImageFile(
+  file: File,
+  onProgress?: (msg: string) => void
+): Promise<HTMLImageElement> {
   if (!file) throw new Error('Dosya seçilmedi.');
 
-  let imageBlob = file;
+  let imageBlob: Blob = file;
   const fileName = (file.name || '').toLowerCase();
-  const isHeic = fileName.endsWith('.heic') || fileName.endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif';
+  const isHeic =
+    fileName.endsWith('.heic') ||
+    fileName.endsWith('.heif') ||
+    file.type === 'image/heic' ||
+    file.type === 'image/heif';
 
   if (isHeic) {
+    if (onProgress) onProgress('HEIC dönüştürücü modülü yükleniyor...');
+    // Lazy-load heic2any only when an HEIC file is provided
+    const heicModule = await import('heic2any');
+    const converter = heicModule.default;
+
     if (onProgress) onProgress('HEIC formatı yüksek kalitede dönüştürülüyor...');
-    const converter = heic2anyModule.default || heic2anyModule;
     const conversionResult = await converter({
       blob: file,
       toType: 'image/jpeg',
@@ -26,9 +36,9 @@ export async function processImageFile(file, onProgress) {
       URL.revokeObjectURL(objectUrl);
       resolve(img);
     };
-    img.onerror = (err) => {
+    img.onerror = () => {
       URL.revokeObjectURL(objectUrl);
-      reject(err);
+      reject(new Error('Görsel dosyası açılamadı. Lütfen geçerli bir JPG, PNG, WebP veya HEIC dosyası seçin.'));
     };
     img.src = objectUrl;
   });

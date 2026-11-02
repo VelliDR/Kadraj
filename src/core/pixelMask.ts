@@ -1,10 +1,16 @@
-// src/core/pixelMask.js
+// src/core/pixelMask.ts
 
-export function generatePixelMaskCanvas(img, width, height, invert = false) {
+export function generatePixelMaskCanvas(
+  img: CanvasImageSource,
+  width: number,
+  height: number,
+  invert = false
+): HTMLCanvasElement {
   const mCanvas = document.createElement('canvas');
   mCanvas.width = width;
   mCanvas.height = height;
   const mCtx = mCanvas.getContext('2d');
+  if (!mCtx) return mCanvas;
 
   // Resmi deforme etmeden maske tuvaline bas
   mCtx.drawImage(img, 0, 0, width, height);

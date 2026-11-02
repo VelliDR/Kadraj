@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc && vite build",
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
@@ -15,11 +15,13 @@
     "@imgly/background-removal": "^1.7.0",
     "heic2any": "^0.0.4",
     "idb-keyval": "^6.3.0",
+    "jspdf": "^4.2.1",
     "konva": "^9.3.22",
     "vite-plugin-pwa": "^0.20.5"
   },
   "devDependencies": {
     "gh-pages": "^6.3.0",
+    "typescript": "^7.0.2",
     "vite": "^5.4.21"
   }
 }

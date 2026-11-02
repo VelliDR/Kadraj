@@ -1,111 +1,105 @@
 # Kadraj | AI Destekli Sanatsal Mizanpaj Atölyesi
 
-> Görsellerinizi sanatsal şekillerle kırpın, yapay zeka ile 3D Pop-Out efektleri ekleyin ve matbaa kalitesinde (300 DPI) mizanpajlar oluşturun.
+[![Deploy Kadraj PWA to GitHub Pages](https://github.com/VelliDR/dergi-pwa/actions/workflows/deploy.yml/badge.svg)](https://github.com/VelliDR/dergi-pwa/actions/workflows/deploy.yml)
+[![PWA Ready](https://img.shields.io/badge/PWA-Ready-4285F4?logo=pwa&logoColor=white)](https://vellidr.github.io/dergi-pwa/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-**Kadraj**, özellikle kültür-sanat, edebi dergiler ve bağımsız yayıncılar için tasarlanmış, tarayıcı üzerinden çalışan, yapay zeka destekli sanatsal bir mizanpaj PWA'sıdır (Progressive Web App). Sıradan dikdörtgen kırpmaların ötesine geçerek, görsellerinizi şiirsel ve sanatsal birer öğeye dönüştürür.
+> Görsellerinizi sanatsal şekillerle kırpın, yapay zeka ile 3D Pop-Out efektleri ekleyin, dergi kağıdı dokuları uygulayın ve matbaa kalitesinde (300 DPI / PDF) mizanpajlar oluşturun.
 
----
-
-## 📌 Hakkında
-
-Kadraj, mizanpaj sürecini dijital bir atölyeye dönüştürür. Geleneksel maskeleme yöntemlerinin karmaşıklığını, modern bir UI ve AI gücüyle birleştirerek, profesyonel tasarımcılardan amatör yayıncılara kadar herkesin estetik ve baskıya hazır içerikler üretmesini sağlar.
-
-Kadraj'ın kalbinde, **Kayıpsız 300 DPI Çıktı Motoru** ve **MediaPipe Selfie Segmentation** tabanlı AI motoru yatar. Bu iki güç, görsellerinizi sanatsal birer enstalasyona dönüştürür.
+🔗 **Canlı Demo:** [https://vellidr.github.io/dergi-pwa/](https://vellidr.github.io/dergi-pwa/)
 
 ---
 
-## ✨ Özellikler
+## 📌 Kadraj Nedir?
 
-### 🧠 Yapay Zeka (AI) ve 3D Derinlik
-
-* **✨ Akıllı Özne Ayrıştırma:** MediaPipe Selfie Segmentation kullanarak fotoğraftaki özneyi (büst, model, nesne) tek tıkla arka planından ayırır.
-* **↩️ 3D Pop-Out & Derinlik:** Arka plan sanatsal şeklin içinde kalırken, AI ile ayrıştırılan öznenin (örneğin heykelin başı, terazisi) şeklin dışına taşmasını sağlar.
-
-### 📐 Sanatsal Kırpma ve Şablonlar
-
-* **Sanatsal Şekil Kütüphanesi:** Antik Kemer, Akışkan Leke (Blob), Puzzle, Yırtık Kağıt, Posta Pulu, Karşıt Köşeler gibi 20'den fazla özel Canvas tabanlı şablon.
-* **📁 Resimden Özel Maske:** Kullanıcının yüklediği herhangi bir iki renkli görseli (siyah-beyaz vb.) anında bir alfa maskesine dönüştürür. **"🔄 Ters Çevir"** özelliğiyle maskenin kullanılacak alanını seçebilirsiniz.
-* **🔍 Dinamik Zoom:** Görseli maske içinde ölçekleyin ve sürükleyin.
-
-### 🎭 Gelişmiş Gölge Motoru
-
-* **📐 Şekil Gölgesi:** Kırpma şeklinin (Örn: Antik Kemer) dergi kağıdı üzerine gerçekçi bir derinlik gölgesi düşürmesini sağlar. $360^\circ$ açı, mesafe ve bulanıklık ayarı.
-* **👤 Özne Silüet Gölgesi (YENİ):** AI ile ayrıştırılan öznenin tam silüetini çıkarır, istenen mat pastel renge boyar ve öznenin arkasına $360^\circ$ açıyla yerleştirir. Edebi bir derinlik sağlar.
-
-### ✍️ Tipografi ve Katmanlama
-
-* **Zarif Font Kütüphanesi:** Kültür-sanat dergileri için seçilmiş fontlar: Cormorant (Şiirsel), Caveat (El Yazısı), Lora (Edebi), Cinzel (Antik) vb.
-* **🔄 360° Metin Döndürme:** Metinleri kendi merkezleri etrafında $360^\circ$ açı ile döndürün (dial-pill sürgüsü).
-* **Katman Hiyerarşisi:** Metinler, AI ile ayrıştırılan öznenin arkasında, genel magazine sheet'in içinde kalacak şekilde mükemmel mizanpaj hiyerarşisiyle yerleştirilir.
-
-### 🖨️ Profesyonel Çıktı ve Formatlar
-
-* **💎 Kayıpsız 300 DPI PNG Çıktı:** Önizlemedeki gölge ve metin oranlarını, baskı ölçeğine (A4 @ 300 DPI: $2480 \times 3508\text{ px}$) matematiksel olarak uyarlar. Renkler çamurlaşmaz.
-* **📷 HEIC/HEIF Desteği:** iPhone'dan gelen `.heic` dosyalarını tarayıcıda doğrudan açar ve %100 kalitede işler (`heic2any` entegrasyonu).
-* **🏁 Şeffaflık Modu:** Arka planı dama tahtası yaparak şeffaf kırpmalar oluşturun.
-
-### 🎨 Material 3 ve Mat Pastel Arayüz
-
-* **Split Navigation Dock:** Sol sütunda dikey menü (Katman, Yazı, Gölge, Şablon), sağ sütunda ızgara şeklinde düzenlenen nizami kontroller. Ekranı taşırmaz.
-* **Muted Pastel Paleti:** Göz yormayan, 'Muted' (mat ve tozlu) pastel tonlar (Sage, Lavender, Sand, Terracotta, Graphite).
+**Kadraj**, özellikle kültür-sanat, edebiyat dergileri ve bağımsız yayıncılar için tasarlanmış, tarayıcı üzerinden istemci taraflı çalışan, yapay zeka destekli sanatsal bir mizanpaj PWA'sıdır (Progressive Web App). Sıradan dikdörtgen kırpmaların ötesine geçerek, fotoğraflarınızı şiirsel ve sanatsal birer dergi sayfasına dönüştürür.
 
 ---
 
-## 🛠️ Kullanılan Teknolojiler
+## ✨ 5 Fazlı İleri Düzey Mimari & Yetenekler
 
-Kadraj'ın kalbinde yatan teknolojiler:
+### 🟢 Faz 1: Kod Hijyeni, Bellek Optimizasyonu & Lazy Loading
+- **Dinamik Modül Yükleme (Code Splitting):** `@imgly/background-removal`, `heic2any` ve `jspdf` dinamik `import()` ile sadece ihtiyaç duyulduğunda yüklenir; ilk sayfa JS boyutu 1.65 MB'tan 81 KB'a düşürülmüştür.
+- **OOM (Bellek Şişmesi) Koruması:** `toDataURL` Base64 zincirleri yerine doğrudan Canvas bitmap aktarımı kullanılarak mobil cihazlarda bellek sızıntıları önlenmiştir.
+- **Silüet Canvas Önbelleği:** Renk değişmedikçe gölge silüetleri önbellekten okunur; gereksiz canvas re-render maliyeti sıfırlanmıştır.
 
-* [Konva.js](https://konvajs.org/) - Gelişmiş Canvas manipülasyonu ve katmanlama motoru.
-* [MediaPipe Selfie Segmentation](https://www.google.com/search?q=https://developers.google.com/mediapipe/solutions/vision/selfie_segmentation) - Yapay zeka ile özne ayrıştırma (WASM/WebGL).
-* [heic2any](https://alexcorvi.github.io/heic2any/) - HEIC/HEIF formatlarını tarayıcıda kayıpsız dönüştürme.
-* [M3 (Material 3)](https://m3.material.io/) - Modern, esnek ve estetik arayüz tasarım dili.
-* JavaScript (ES6+), HTML5, CSS3.
+### 🟡 Faz 2: Durum Yönetimi, Undo/Redo & Taslak Kurtarma
+- **30 Adımlık Geri/İleri Al (Undo/Redo):** Tuvaldeki her değişiklik için anlık durum snapshot'ı alınır. Üst bar butonları veya `Ctrl+Z` / `Ctrl+Y` kısayolları ile geçmişte gezinebilirsiniz.
+- **IndexedDB Otomatik Taslak Saklama:** `idb-keyval` ile görsel binary Blob ve tüm mizanpaj durumu arka planda kaydedilir. Tarayıcı kapansa dahi başlangıçta "Kayıtlı taslağınız bulundu" bildirimiyle oturum kurtarılır.
+
+### 🔵 Faz 3: Katman Hiyerarşisi, Tipografi & Akıllı Kılavuzlar
+- **Katman Paneli (Layer Stack):** Özne (3D Pop-out), Metinler, Şekil/Maske, Kağıt Dokusu ve Ana Görsel hiyerarşik sıralanır. Katmanlar tek tıkla gizlenebilir (`👁️/🕶️`), metin katmanları yukarı/aşağı (`▲/▼`) taşınabilir.
+- **Zengin Tipografi Kontrolleri:** Sola, ortaya, sağa hizalama; Kalın (**B**), İtalik (*I*) ve Harf Aralığı (`letter-spacing`) yatay silindir kadranı.
+- **Akıllı Manyetik Kılavuzlar (Snap Guides):** Nesneler taşınırken tuvalin tam merkezine (X/Y ekseni $\pm 7\text{ px}$) snap olunca kehribar sarısı kesikli manyetik hizalama çizgileri belirir.
+
+### 🟣 Faz 4: Baskı Standartları, Boyut Presetleri & Çoklu Export
+- **Sayfa Boyut Presetleri:**
+  - *Baskı:* A4 Dikey, A4 Yatay, A5 Dikey, Kitap Kapağı (4:5).
+  - *Dijital & Sosyal Medya:* Instagram Post (Kare 1:1), Hikaye / Reels (9:16), Doğal Otomatik Oran.
+- **Çoklu Dışa Aktarma Formatları:**
+  - **💎 300 DPI PNG:** Matbaaya uygun kayıpsız yüksek çözünürlüklü raster çıktı.
+  - **📕 Baskıya Hazır PDF:** `jsPDF` motoruyla gerçek A4/A5 milimetrik ölçüde vektörel belge.
+  - **🌐 Yüksek Kalite WebP:** Dijital bültenler ve web için hafif sıkıştırılmış çıktı.
+  - **📐 Vektör Maske (SVG):** Adobe Illustrator / InDesign aktarımı için vektörel yol.
+- **Taşma Payı ve Kesim Çizgileri (Crop Marks & Bleed):** Matbaa baskısı için isteğe bağlı kesim payı kılavuzları.
+
+### 🔴 Faz 5: Sanatsal Kağıt Dokuları, Filtreler & Çevrimdışı AI Önbelleği
+- **Prosedürel Kağıt Dokuları (Paper Textures):** 0 KB ek ağ yüküyle çalışan kod tabanlı doku motoru:
+  - 📜 *Parşömen:* Sıcak, lifli antik edebiyat kağıdı.
+  - 📰 *Saman Kağıdı / Gazete:* Mat gri-bej nostaljik benekli doku.
+  - ✨ *Kuşe Kağıt:* Mikro grenli pürüzsüz çağdaş dergi yüzeyi.
+  - 🎞️ *35mm Film Greni:* Sinematik analog fotoğraf greni.
+  - 🧶 *Keten Tuval:* Sanatsal mikro örgü kumaş dokusu.
+  - *Karışım Modları:* Çarpma (`multiply`), Kaplama (`overlay`), Yumuşak Işık (`soft-light`), Açıklaştır (`screen`) ve opaklık kadranı.
+- **Görsel Ayarları & Renk Filtreleri:** Parlaklık, kontrast, doygunluk, analog film greni ve hızlı tonlar (Doğal, Nostaljik Sepya, Siyah-Beyaz). Hem arka plan görseline hem de 3D özneye senkron uygulanır.
+- **Gelişmiş AI Kenar Matting (Erosion & Feathering):** Morfolojik aşındırma ile saç ve ten kenarlarındaki arka plan renk halolarını (fringe) piksel düzeyinde traşlama ve kadifemsi kenar yumuşatma.
+- **Çevrimdışı ONNX & WASM Önbelleği:** Workbox Service Worker `runtimeCaching` ile indirilen AI model ağırlıkları 30 gün boyunca yerel cihazda saklanır ve çevrimdışı çalışır.
 
 ---
 
-## 🚀 Başlangıç (Geliştiriciler İçin)
+## 🛠️ Teknoloji Yığını
 
-Projenin yerel kopyasını çalıştırmak için aşağıdaki adımları izleyin.
+* **Çekirdek:** TypeScript, Vite 5, Konva.js (Canvas 2D), Workbox (PWA Service Worker)
+* **Yapay Zeka & Görüntü İşleme:** `@imgly/background-removal` (ISNet ONNX / WASM), `heic2any`
+* **Dışa Aktarma & Saklama:** `jspdf`, `idb-keyval` (IndexedDB)
+* **Tasarım Dili:** Google Material 3 (M3) Muted Pastel Paleti
+* **CI/CD & Dağıtım:** GitHub Actions, GitHub Pages
 
-### Gereksinimler
+---
 
-Kurulumdan önce bilgisayarınızda şunların yüklü olması gerekir:
+## 🚀 Yerel Geliştirme
 
-* [Node.js v18+](https://nodejs.org/)
-* Git
-
-### Kurulum
-
-1. Projeyi klonlayın:
 ```bash
-git clone https://github.com/VelliDR/kadraj.git
-cd kadraj
+# Depoyu klonlayın
+git clone https://github.com/VelliDR/dergi-pwa.git
+cd dergi-pwa
 
-```
-
-
-2. Gerekli paketleri kurun:
-```bash
+# Bağımlılıkları yükleyin
 npm install
-# veya
-yarn install
 
-```
-
-
-3. Vite geliştirme sunucusunu başlatın:
-```bash
+# Geliştirme sunucusunu başlatın
 npm run dev
-# veya
-yarn dev
 
+# TypeScript kontrolü ve üretim derlemesi
+npm run build
 ```
 
+---
 
-4. Tarayıcınızda [http://localhost:5173](http://localhost:5173) adresine gidin.
+## 🌐 GitHub Pages ile Yayınlama (CI/CD)
+
+Projede otomatik yayınlama için [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) iş akışı tanımlıdır.
+
+### GitHub Pages Kurulumu (1 Seferlik):
+1. GitHub reponuzda **Settings (Ayarlar)** sekmesine gidin.
+2. Sol menüden **Pages** seçeneğine tıklayın.
+3. **Build and deployment > Source** kısmını **"GitHub Actions"** olarak seçin.
+4. `master` dalına her `git push` yaptığınızda GitHub Actions otomatik olarak:
+   - TypeScript tip denetimini çalıştırır (`tsc`)
+   - Vite ile optimize edilmiş PWA bundle'ını derler (`vite build`)
+   - Sonucu anında **GitHub Pages** üzerine yayına alır.
 
 ---
 
 ## 📄 Lisans
-
-Bu proje MIT Lisansı ile lisanslanmıştır. Detaylar için [LICENSE](https://www.google.com/search?q=LICENSE) dosyasına bakınız.
+Bu proje [MIT Lisansı](LICENSE) ile lisanslanmıştır.
