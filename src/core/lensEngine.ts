@@ -124,6 +124,7 @@ function applyOpticalDistortion(
   const cx = w / 2;
   const cy = h / 2;
   const maxR = Math.hypot(cx, cy);
+  const maxR2 = maxR * maxR;
 
   // Normalize edilmiş distorsiyon katsayısı
   const bulgeStrength = (bulgeAmount / 100) * 0.45;
@@ -131,26 +132,26 @@ function applyOpticalDistortion(
 
   for (let y = 0; y < h; y += 1) {
     const dy = y - cy;
+    const dy2 = dy * dy;
+    const dstRowOffset = y * w * 4;
+
     for (let x = 0; x < w; x += 1) {
       const dx = x - cx;
-      const r = Math.hypot(dx, dy);
-      const normR = r / maxR;
+      const r2 = dx * dx + dy2;
 
-      if (normR <= 0 || normR >= 1.0) continue;
+      if (r2 <= 0 || r2 >= maxR2) continue;
 
-      // Küresel mercek eğrilik formülü (Merkez dışarı doğru yayılır)
-      const factor = 1 - bulgeStrength * (1 - normR * normR);
-      const angle = Math.atan2(dy, dx);
+      const normR2 = r2 / maxR2;
+      // Küresel mercek eğrilik formülü (Analitik vektörel sadeleştirme)
+      const factorG = 1 - bulgeStrength * (1 - normR2);
+      const factorR = factorG * (1 - aberFactor);
+      const factorB = factorG * (1 + aberFactor);
 
-      const rGreen = r * factor;
-      const rRed = r * (factor * (1 - aberFactor));
-      const rBlue = r * (factor * (1 + aberFactor));
-
-      const dstIdx = (y * w + x) * 4;
+      const dstIdx = dstRowOffset + x * 4;
 
       // Yeşil Kanal (Ana Merkez)
-      const srcXG = Math.round(cx + Math.cos(angle) * rGreen);
-      const srcYG = Math.round(cy + Math.sin(angle) * rGreen);
+      const srcXG = Math.round(cx + dx * factorG);
+      const srcYG = Math.round(cy + dy * factorG);
       if (srcXG >= 0 && srcXG < w && srcYG >= 0 && srcYG < h) {
         const srcIdxG = (srcYG * w + srcXG) * 4;
         dst[dstIdx + 1] = src[srcIdxG + 1];
@@ -158,16 +159,16 @@ function applyOpticalDistortion(
       }
 
       // Kırmızı Kanal (Prizma Kırılması İç)
-      const srcXR = Math.round(cx + Math.cos(angle) * rRed);
-      const srcYR = Math.round(cy + Math.sin(angle) * rRed);
+      const srcXR = Math.round(cx + dx * factorR);
+      const srcYR = Math.round(cy + dy * factorR);
       if (srcXR >= 0 && srcXR < w && srcYR >= 0 && srcYR < h) {
         const srcIdxR = (srcYR * w + srcXR) * 4;
         dst[dstIdx] = src[srcIdxR];
       }
 
       // Mavi Kanal (Prizma Kırılması Dış)
-      const srcXB = Math.round(cx + Math.cos(angle) * rBlue);
-      const srcYB = Math.round(cy + Math.sin(angle) * rBlue);
+      const srcXB = Math.round(cx + dx * factorB);
+      const srcYB = Math.round(cy + dy * factorB);
       if (srcXB >= 0 && srcXB < w && srcYB >= 0 && srcYB < h) {
         const srcIdxB = (srcYB * w + srcXB) * 4;
         dst[dstIdx + 2] = src[srcIdxB + 2];

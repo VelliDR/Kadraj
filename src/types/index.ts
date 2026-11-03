@@ -70,7 +70,7 @@ export interface ExportOptions {
   quality?: number;
 }
 
-export type TextureType = 'none' | 'parchment' | 'newsprint' | 'coated' | 'grain' | 'linen';
+export type TextureType = 'none' | 'parchment' | 'newsprint' | 'coated' | 'grain' | 'linen' | 'watercolor' | 'folded';
 
 export type TextureBlendMode = 'multiply' | 'overlay' | 'screen' | 'soft-light';
 

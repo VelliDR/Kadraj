@@ -52,6 +52,7 @@ export interface LensPortalInstance {
 let lensPortals: LensPortalInstance[] = [];
 let activeLensId: string | null = null;
 let lensTransformer: Konva.Transformer | null = null;
+let textTransformer: Konva.Transformer | null = null;
 let onLensSelectCallback: ((lens: SerializedLensItem | null) => void) | null = null;
 const currentLensConfig: LensConfig = { ...DEFAULT_LENS_CONFIG };
 
@@ -164,6 +165,36 @@ export function initCanvas(
     },
   });
   lensLayer.add(lensTransformer);
+
+  textTransformer = new Konva.Transformer({
+    nodes: [],
+    enabledAnchors: ['top-left', 'top-right', 'bottom-left', 'bottom-right'],
+    rotateEnabled: true,
+    borderStroke: '#d1c4a9',
+    borderStrokeWidth: 1.5,
+    anchorStroke: '#d1c4a9',
+    anchorFill: '#ffffff',
+    anchorSize: 8,
+    boundBoxFunc: (oldBox, newBox) => {
+      if (newBox.width < 20 || newBox.height < 15) return oldBox;
+      return newBox;
+    },
+  });
+  textLayer.add(textTransformer);
+
+  textTransformer.on('transform', () => {
+    if (!selectedTextNode) return;
+    const sx = selectedTextNode.scaleX();
+    selectedTextNode.scaleX(1);
+    selectedTextNode.scaleY(1);
+    const newSize = Math.max(12, Math.min(160, Math.round(selectedTextNode.fontSize() * sx)));
+    selectedTextNode.fontSize(newSize);
+    selectedTextNode.rotation(Math.round((((selectedTextNode.rotation() % 360) + 360) % 360)));
+    selectedTextNode.offsetX(selectedTextNode.width() / 2);
+    selectedTextNode.offsetY(selectedTextNode.height() / 2);
+    if (onTextSelectCallback) onTextSelectCallback(selectedTextNode);
+    notifyChange();
+  });
 
   bgRect = new Konva.Rect({
     x: 0,
@@ -292,7 +323,9 @@ export function applyCanvasPreset(preset: CanvasPreset): void {
   STAGE_HEIGHT = Math.round(STAGE_WIDTH / aspectRatio);
 
   if (stage && bgRect && maskGroup) {
+    stage.width(STAGE_WIDTH);
     stage.height(STAGE_HEIGHT);
+    bgRect.width(STAGE_WIDTH);
     bgRect.height(STAGE_HEIGHT);
     maskGroup.width(STAGE_WIDTH);
     maskGroup.height(STAGE_HEIGHT);
@@ -440,20 +473,29 @@ export function updateSelectedText(opts: TextNodeOptions): void {
 
 function selectText(node: Konva.Text): void {
   selectedTextNode = node;
+  if (textTransformer) {
+    textTransformer.nodes([node]);
+    textTransformer.moveToTop();
+    textLayer?.batchDraw();
+  }
   if (onTextSelectCallback) onTextSelectCallback(node);
 }
 
 export function deselectText(): void {
   selectedTextNode = null;
+  if (textTransformer) {
+    textTransformer.nodes([]);
+    textLayer?.batchDraw();
+  }
   if (onTextSelectCallback) onTextSelectCallback(null);
 }
 
 export function deleteSelectedText(): void {
   if (selectedTextNode) {
-    selectedTextNode.destroy();
-    selectedTextNode = null;
-    textLayer?.batchDraw();
+    const node = selectedTextNode;
     deselectText();
+    node.destroy();
+    textLayer?.batchDraw();
     notifyChange();
   }
 }
@@ -1628,8 +1670,9 @@ export function applyPixelMaskNode(maskCanvas: HTMLCanvasElement, isInverted = f
   });
 
   currentImageNode.globalCompositeOperation('source-in');
-  maskGroup.destroyChildren();
-  maskGroup.add(customMaskImageNode, currentImageNode);
+  maskGroup.add(customMaskImageNode);
+  customMaskImageNode.moveToBottom();
+  currentImageNode.moveToTop();
   updateLensRender();
   photoLayer?.batchDraw();
   notifyChange();
@@ -1688,7 +1731,7 @@ export function exportPNG(): string {
   deselectText();
   selectLens(null);
   if (!stage) throw new Error('Stage henüz başlatılmadı.');
-  return exportHighResolutionPNG(stage, STAGE_WIDTH, STAGE_HEIGHT);
+  return exportHighResolutionPNG(stage, STAGE_WIDTH, STAGE_HEIGHT, false, currentTextureConfig);
 }
 
 export async function exportMultiFormat(
@@ -1697,7 +1740,7 @@ export async function exportMultiFormat(
   deselectText();
   selectLens(null);
   if (!stage) throw new Error('Stage henüz başlatılmadı.');
-  return exportProject(stage, STAGE_WIDTH, currentPreset, options);
+  return exportProject(stage, STAGE_WIDTH, currentPreset, options, currentShapeKey, currentTextureConfig);
 }
 
 export function hasImage(): boolean {
@@ -1741,15 +1784,14 @@ export function getCutoutCanvas(): HTMLCanvasElement | null {
 }
 
 function clearCustomPixelMask(): void {
-  if (customMaskImageNode && maskGroup) {
+  if (customMaskImageNode) {
     customMaskImageNode.destroy();
     customMaskImageNode = null;
     currentMaskInverted = false;
     if (currentImageNode) {
       currentImageNode.globalCompositeOperation('source-over');
-      maskGroup.destroyChildren();
-      maskGroup.add(currentImageNode);
     }
+    photoLayer?.batchDraw();
   }
 }
 
@@ -1880,7 +1922,10 @@ export function restoreProjectSnapshot(snapshot: ProjectSnapshot): void {
 
   // 10. Metin Katmanları (Zengin Tipografi İle)
   if (textLayer) {
-    textLayer.destroyChildren();
+    if (textTransformer) textTransformer.nodes([]);
+    textLayer.getChildren().forEach((node) => {
+      if (node !== textTransformer) node.destroy();
+    });
     snapshot.texts.forEach((item) => {
       const tNode = new Konva.Text({
         id: item.id,
@@ -1946,7 +1991,11 @@ export function resetEngine(): void {
   }
   clearCustomPixelMask();
 
-  textLayer?.destroyChildren();
+  if (textTransformer) textTransformer.nodes([]);
+  selectedTextNode = null;
+  textLayer?.getChildren().forEach((node) => {
+    if (node !== textTransformer) node.destroy();
+  });
   textLayer?.batchDraw();
   textureLayer?.destroyChildren();
   textureLayer?.batchDraw();

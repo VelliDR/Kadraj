@@ -51,6 +51,8 @@ import {
   addLensPortal,
   removeLensPortal,
   selectLens,
+  getSelectedLens,
+  deselectText,
   updateSelectedLens,
   applyLensLayoutPreset,
   setOnLensSelect,
@@ -301,16 +303,29 @@ function setupDial(options: DialOptions): DialController {
     });
   }
 
-  display?.addEventListener('dblclick', () => {
-    const input = prompt(`Yeni değer girin (${min} - ${max}):`, String(currentValue));
-    if (input !== null) {
-      const parsed = parseFloat(input);
-      if (!isNaN(parsed)) {
-        applyNewValue(parsed);
-        pushHistorySnapshot();
+  if (display) {
+    display.title = 'Tıkla: Değer Gir | Çift Tık: Sıfırla';
+    display.style.cursor = 'pointer';
+
+    display.addEventListener('click', () => {
+      const input = prompt(`${label || 'Değer'}: Yeni değer girin (${min} - ${max}):`, String(currentValue));
+      if (input !== null) {
+        const parsed = parseFloat(input);
+        if (!isNaN(parsed)) {
+          applyNewValue(parsed);
+          pushHistorySnapshot();
+          showToast(`${label || 'Ayar'}: ${format(parsed)}`, '🎯', 1500);
+        }
       }
-    }
-  });
+    });
+
+    display.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      applyNewValue(initialValue);
+      pushHistorySnapshot();
+      showToast(`${label || 'Ayar'} sıfırlandı: ${format(initialValue)}`, '🔄', 1500);
+    });
+  }
 
   const controller: DialController = {
     setValue: (val: number, trigger = false) => {
@@ -645,6 +660,15 @@ function renderLayerList(): void {
         selectLens(layer.id);
         const lensTab = document.querySelector<HTMLButtonElement>('[data-tab="tab-lens"]');
         if (lensTab) lensTab.click();
+      } else if (layer.type === 'shape') {
+        const shapeTab = document.querySelector<HTMLButtonElement>('[data-tab="tab-shapes"]');
+        if (shapeTab) shapeTab.click();
+      } else if (layer.type === 'texture' || layer.type === 'image') {
+        const effTab = document.querySelector<HTMLButtonElement>('[data-tab="tab-effects"]');
+        if (effTab) effTab.click();
+      } else if (layer.type === 'subject') {
+        const shadowTab = document.querySelector<HTMLButtonElement>('[data-tab="tab-shadows"]');
+        if (shadowTab) shadowTab.click();
       }
     });
 
@@ -837,6 +861,8 @@ function syncUIFromSnapshot(s: ProjectSnapshot): void {
 // OTOMATİK TASLAK SAKLAMA (INDEXEDDB AUTOSAVE)
 // =========================================================
 
+let cachedMainImageBlob: Blob | null = null;
+
 function scheduleAutosave(): void {
   if (!hasImage()) return;
   if (autosaveTimer) clearTimeout(autosaveTimer);
@@ -847,13 +873,15 @@ function scheduleAutosave(): void {
       if (!origImg) return;
 
       const snapshot = getProjectSnapshot();
-      const mainImageBlob = await imageElementToBlob(origImg);
+      if (!cachedMainImageBlob) {
+        cachedMainImageBlob = (await imageElementToBlob(origImg)) || null;
+      }
       const cutoutCanvas = getCutoutCanvas();
       const cutoutBlob = cutoutCanvas ? await canvasElementToBlob(cutoutCanvas) : undefined;
 
       const stored: StoredProject = {
         snapshot,
-        mainImageBlob,
+        mainImageBlob: cachedMainImageBlob || undefined,
         cutoutBlob,
         updatedAt: Date.now(),
       };
@@ -879,8 +907,31 @@ function hideLoading(): void {
   if (loadingOverlay) loadingOverlay.classList.add('hidden');
 }
 
-function showWarning(): void {
-  if (statusText) statusText.innerText = 'Lütfen önce bir ana görsel yükleyin!';
+const toastContainer = document.getElementById('toastContainer');
+let toastTimer: number | null = null;
+
+export function showToast(message: string, icon = '✨', duration = 2400): void {
+  if (statusText) statusText.innerText = message;
+  if (!toastContainer) return;
+
+  toastContainer.innerHTML = '';
+  if (toastTimer) clearTimeout(toastTimer);
+
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.innerHTML = `<span class="toast-icon">${icon}</span><span>${message}</span>`;
+  toastContainer.appendChild(toast);
+
+  toastTimer = window.setTimeout(() => {
+    toast.classList.add('toast-fadeout');
+    window.setTimeout(() => {
+      toast.remove();
+    }, 220);
+  }, duration);
+}
+
+function showWarning(msg = 'Lütfen önce bir ana görsel yükleyin!'): void {
+  showToast(msg, '⚠️');
 }
 
 document.querySelectorAll<HTMLButtonElement>('.dock-tab').forEach((tab) => {
@@ -1030,12 +1081,13 @@ imageInputElement?.addEventListener('change', async (e) => {
     pushHistorySnapshot();
     renderLayerList();
 
+    cachedMainImageBlob = file;
     if (btnSegment) btnSegment.innerText = '✨ Özneyi Ayır';
     btnInvertMask?.classList.add('hidden');
     document.querySelectorAll('.shape-pill').forEach((b) => b.classList.remove('active'));
-    if (statusText) statusText.innerText = 'Görsel tuvale organik oranlarıyla yerleştirildi.';
+    showToast('Görsel tuvale organik oranlarıyla yerleştirildi.', '🖼️');
   } catch (err) {
-    if (statusText) statusText.innerText = 'Görsel yüklenirken hata oluştu.';
+    showToast('Görsel yüklenirken hata oluştu.', '❌');
     console.error(err);
   } finally {
     hideLoading();
@@ -1164,6 +1216,7 @@ btnReset?.addEventListener('click', async () => {
   if (!hasImage()) return;
   resetEngine();
   customMaskRawImg = null;
+  cachedMainImageBlob = null;
   historyManager.clear();
   await clearDraftFromStorage();
 
@@ -1202,7 +1255,7 @@ btnReset?.addEventListener('click', async () => {
   });
 
   renderLayerList();
-  if (statusText) statusText.innerText = 'Sıfırlandı ve taslak temizlendi.';
+  showToast('Sıfırlandı ve taslak temizlendi.', '🔄');
 });
 
 // Faz 5: Doku ve Filtre Event Listener'ları
@@ -1291,6 +1344,11 @@ setOnLensSelect((selected) => {
     document.querySelectorAll<HTMLButtonElement>('[data-tint]').forEach((btn) => {
       btn.classList.toggle('active', btn.dataset.tint === selected.tint);
     });
+
+    const lensTab = document.querySelector<HTMLButtonElement>('[data-tab="tab-lens"]');
+    if (lensTab && !lensTab.classList.contains('active')) {
+      lensTab.click();
+    }
   } else {
     if (badge) badge.innerText = `💎 ŞEKİL:`;
   }
@@ -1516,11 +1574,12 @@ async function checkForSavedDraft(): Promise<void> {
             historyManager.clear();
             historyManager.push(saved.snapshot);
 
+            if (saved.mainImageBlob) cachedMainImageBlob = saved.mainImageBlob;
             draftBanner?.classList.add('hidden');
-            if (statusText) statusText.innerText = 'Kayıtlı taslak başarıyla geri yüklendi!';
+            showToast('Kayıtlı taslak başarıyla geri yüklendi!', '💾');
           } catch (err) {
             console.error('Taslak geri yüklenemedi:', err);
-            if (statusText) statusText.innerText = 'Taslak yüklenirken hata oluştu.';
+            showToast('Taslak yüklenirken hata oluştu.', '❌');
           } finally {
             hideLoading();
           }
@@ -1551,4 +1610,102 @@ window.addEventListener('resize', () => {
   resizeDebounceTimer = window.setTimeout(() => {
     handleCanvasResize('canvas-container');
   }, 200);
+});
+
+// =========================================================
+// KLAVYE KISAYOLLARI (PRO DESIGNER SHORTCUTS)
+// =========================================================
+window.addEventListener('keydown', (e: KeyboardEvent) => {
+  const activeEl = document.activeElement;
+  const isInputActive =
+    activeEl instanceof HTMLInputElement ||
+    activeEl instanceof HTMLTextAreaElement ||
+    activeEl instanceof HTMLSelectElement;
+
+  // Ctrl+Z / Cmd+Z: Geri Al
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+    if (!isInputActive) {
+      e.preventDefault();
+      btnUndo?.click();
+    }
+    return;
+  }
+
+  // Ctrl+Y / Cmd+Y veya Ctrl+Shift+Z: İleri Al
+  if (
+    (e.ctrlKey || e.metaKey) &&
+    (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))
+  ) {
+    if (!isInputActive) {
+      e.preventDefault();
+      btnRedo?.click();
+    }
+    return;
+  }
+
+  // Ctrl+S / Cmd+S: Dışa Aktarma Modalı
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    btnDownload?.click();
+    return;
+  }
+
+  if (isInputActive) return;
+
+  // Escape: Seçimi Kaldır
+  if (e.key === 'Escape') {
+    deselectText();
+    selectLens(null);
+    showToast('Seçim kaldırıldı.', '✖️', 1200);
+    return;
+  }
+
+  // Delete / Backspace: Seçili Nesneyi Sil
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    const selectedText = getSelectedTextNode();
+    const selectedLens = getSelectedLens();
+
+    if (selectedText) {
+      e.preventDefault();
+      deleteSelectedText();
+      pushHistorySnapshot();
+      showToast('Metin katmanı silindi.', '🗑️', 1800);
+      return;
+    }
+
+    if (selectedLens) {
+      e.preventDefault();
+      removeLensPortal();
+      pushHistorySnapshot();
+      showToast('Cam portalı silindi.', '🗑️', 1800);
+      return;
+    }
+  }
+
+  // Yön Tuşları: Seçili Nesneyi İnce Öteleme (Piksel Hassasiyetinde Nudge)
+  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+    const step = e.shiftKey ? 10 : 1;
+    const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+    const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+
+    const selectedText = getSelectedTextNode();
+    if (selectedText) {
+      e.preventDefault();
+      selectedText.x(selectedText.x() + dx);
+      selectedText.y(selectedText.y() + dy);
+      selectedText.getLayer()?.batchDraw();
+      scheduleAutosave();
+      return;
+    }
+
+    const selectedLens = getSelectedLens();
+    if (selectedLens) {
+      e.preventDefault();
+      updateSelectedLens({
+        x: selectedLens.x + dx,
+        y: selectedLens.y + dy,
+      });
+      return;
+    }
+  }
 });
