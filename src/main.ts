@@ -45,6 +45,7 @@ import {
   applyTexture,
   setImageAdjustments,
   getTextureConfig,
+  getRawSegmentationMask,
   handleCanvasResize,
 } from './core/canvasEngine';
 
@@ -89,6 +90,7 @@ const btnDeleteText = document.getElementById('btnDeleteText') as HTMLButtonElem
 
 const chkSubjectShadow = document.getElementById('chkSubjectShadow') as HTMLInputElement | null;
 const subjShadowColor = document.getElementById('subjShadowColor') as HTMLInputElement | null;
+const shapeShadowColor = document.getElementById('shapeShadowColor') as HTMLInputElement | null;
 
 // Faz 2: Geri Al / İleri Al ve Taslak Elemanları
 const btnUndo = document.getElementById('btnUndo') as HTMLButtonElement | null;
@@ -197,9 +199,12 @@ function setupDial(options: DialOptions): DialController {
   updateUI(currentValue);
 
   if (track) {
+    let totalDragDist = 0;
+
     track.addEventListener('pointerdown', (e: PointerEvent) => {
       isDragging = true;
       startX = e.clientX;
+      totalDragDist = 0;
       accumulatedDelta = 0;
       track.setPointerCapture(e.pointerId);
     });
@@ -209,12 +214,13 @@ function setupDial(options: DialOptions): DialController {
       const deltaX = e.clientX - startX;
       startX = e.clientX;
 
+      totalDragDist += Math.abs(deltaX);
       accumulatedDelta += deltaX;
-      const stepShift = Math.trunc(accumulatedDelta / 3);
+      const stepShift = Math.trunc(accumulatedDelta / 2);
 
       if (stepShift !== 0) {
         applyNewValue(currentValue + stepShift * step);
-        accumulatedDelta -= stepShift * 3;
+        accumulatedDelta -= stepShift * 2;
       }
     });
 
@@ -226,6 +232,19 @@ function setupDial(options: DialOptions): DialController {
         } catch {
           // Ignored
         }
+
+        // Kullanıcı sürüklemeden sadece tıkladıysa (tap / click):
+        if (totalDragDist < 4) {
+          const rect = track.getBoundingClientRect();
+          const clickX = e.clientX - rect.left;
+          const centerX = rect.width / 2;
+          const diff = clickX - centerX;
+          if (Math.abs(diff) > 4) {
+            const dir = diff > 0 ? 1 : -1;
+            applyNewValue(currentValue + dir * step);
+          }
+        }
+
         pushHistorySnapshot();
       }
     };
@@ -428,7 +447,15 @@ setupDial({
   initialValue: 25,
   label: 'Doku Opaklığı',
   format: (v) => '%' + Math.round(v),
-  onChange: (val) => applyTexture({ opacity: val / 100 }),
+  onChange: (val) => {
+    const currentCfg = getTextureConfig();
+    let type = currentCfg.type;
+    if (type === 'none') {
+      type = 'parchment';
+      if (textureSelect) textureSelect.value = 'parchment';
+    }
+    applyTexture({ type, opacity: val / 100 });
+  },
 });
 
 setupDial({
@@ -488,7 +515,12 @@ setupDial({
   initialValue: 0,
   label: 'Halo Silme',
   format: (v) => Math.round(v) + 'px',
-  onChange: (val) => setEdgeRefine({ erodePixels: val }),
+  onChange: (val) => {
+    setEdgeRefine({ erodePixels: val });
+    if (!getRawSegmentationMask() && statusText) {
+      statusText.innerText = 'ℹ️ Halo silme için önce "✨ Özneyi Ayır" ile özneyi ayrıştırın.';
+    }
+  },
 });
 
 setupDial({
@@ -500,7 +532,12 @@ setupDial({
   initialValue: 0,
   label: 'Feather Blur',
   format: (v) => v.toFixed(1) + 'px',
-  onChange: (val) => setEdgeRefine({ featherBlur: val }),
+  onChange: (val) => {
+    setEdgeRefine({ featherBlur: val });
+    if (!getRawSegmentationMask() && statusText) {
+      statusText.innerText = 'ℹ️ Feather blur için önce "✨ Özneyi Ayır" ile özneyi ayrıştırın.';
+    }
+  },
 });
 
 // =========================================================
@@ -674,6 +711,7 @@ function syncUIFromSnapshot(s: ProjectSnapshot): void {
 
   if (chkSubjectShadow) chkSubjectShadow.checked = s.subjectShadow.enabled;
   if (subjShadowColor) subjShadowColor.value = s.subjectShadow.color;
+  if (shapeShadowColor && s.shapeShadow?.color) shapeShadowColor.value = s.shapeShadow.color;
   if (btnToggleBg) btnToggleBg.innerText = s.isTransparent ? '📄 Zemin' : '🏁 Şeffaf';
   if (canvasContainer) canvasContainer.classList.toggle('transparent-canvas', s.isTransparent);
   if (btnSegment) btnSegment.innerText = s.hasSubjectCutout ? '🗑️ Özneyi Kaldır' : '✨ Özneyi Ayır';
@@ -966,6 +1004,12 @@ subjShadowColor?.addEventListener('input', (e) => {
   pushHistorySnapshot();
 });
 
+shapeShadowColor?.addEventListener('input', (e) => {
+  const target = e.target as HTMLInputElement;
+  updateShapeShadow({ color: target.value });
+  pushHistorySnapshot();
+});
+
 document.querySelectorAll<HTMLButtonElement>('.shape-pill').forEach((btn) => {
   btn.addEventListener('click', () => {
     if (!hasImage()) return showWarning();
@@ -1052,6 +1096,13 @@ btnReset?.addEventListener('click', async () => {
   dials['noiseRange']?.setValue(0, false);
   dials['erodePixelsRange']?.setValue(0, false);
   dials['featherBlurRange']?.setValue(0, false);
+  dials['shapeShadowDist']?.setValue(0, false);
+  dials['shapeShadowBlur']?.setValue(0, false);
+  dials['shapeShadowAngle']?.setValue(45, false);
+  dials['subjShadowDist']?.setValue(14, false);
+  dials['subjShadowAngle']?.setValue(135, false);
+  if (shapeShadowColor) shapeShadowColor.value = '#000000';
+  if (subjShadowColor) subjShadowColor.value = '#1a1a1a';
 
   renderLayerList();
   if (statusText) statusText.innerText = 'Sıfırlandı ve taslak temizlendi.';

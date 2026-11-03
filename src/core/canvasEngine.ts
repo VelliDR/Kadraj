@@ -142,13 +142,17 @@ export function initCanvas(
 
   shapeShadowNode = new Konva.Shape({
     sceneFunc: (ctx, shape) => {
+      const rawCtx =
+        (ctx as unknown as { _context: CanvasRenderingContext2D })._context ||
+        (ctx as unknown as CanvasRenderingContext2D);
+      rawCtx.beginPath();
       if (currentVectorShapeFunc) {
-        const rawCtx =
-          (ctx as unknown as { _context: CanvasRenderingContext2D })._context ||
-          (ctx as unknown as CanvasRenderingContext2D);
         currentVectorShapeFunc(rawCtx, STAGE_WIDTH, STAGE_HEIGHT);
-        ctx.fillShape(shape);
+      } else {
+        const pad = (shapeShadowConfig.distance > 0 || shapeShadowConfig.blur > 0) ? 14 : 0;
+        rawCtx.rect(pad, pad, STAGE_WIDTH - pad * 2, STAGE_HEIGHT - pad * 2);
       }
+      ctx.fillShape(shape);
     },
     fill: '#000000',
     visible: false,
@@ -559,7 +563,13 @@ function applyFiltersToNode(node: Konva.Image | null): void {
   }
   if (currentImageAdjustments.saturation !== 0) {
     filters.push(Konva.Filters.HSV);
-    node.saturation(1 + currentImageAdjustments.saturation / 100);
+    const sat = currentImageAdjustments.saturation;
+    // sat: -100 ile +100 arasında
+    // sat = 0 -> 0 (2^0 = 1, normal)
+    // sat = -100 -> -10 (2^-10 = ~0.001, kusursuz siyah-beyaz desatürasyon)
+    // sat = +100 -> +2 (2^2 = 4, canlı renkler)
+    const konvaSat = sat < 0 ? sat / 10 : sat / 50;
+    node.saturation(konvaSat);
   }
   if (currentImageAdjustments.grayscale) {
     filters.push(Konva.Filters.Grayscale);
@@ -572,12 +582,16 @@ function applyFiltersToNode(node: Konva.Image | null): void {
     node.noise(currentImageAdjustments.noise / 100);
   }
 
+  node.clearCache();
   if (filters.length > 0) {
     node.filters(filters);
-    node.cache();
+    try {
+      node.cache();
+    } catch (e) {
+      console.warn('Filtre önbellekleme hatası:', e);
+    }
   } else {
     node.filters([]);
-    node.clearCache();
   }
   node.getLayer()?.batchDraw();
 }
@@ -586,7 +600,12 @@ function reapplyCacheIfFiltered(node: Konva.Image | null): void {
   if (!node) return;
   const filters = node.filters();
   if (filters && filters.length > 0) {
-    node.cache();
+    node.clearCache();
+    try {
+      node.cache();
+    } catch {
+      // Ignored
+    }
   }
 }
 
@@ -600,6 +619,8 @@ export function setImageAdjustments(adj: Partial<ImageAdjustments>): void {
 
   applyFiltersToNode(currentImageNode);
   applyFiltersToNode(foregroundImageNode);
+  photoLayer?.batchDraw();
+  fgLayer?.batchDraw();
   notifyChange();
 }
 
@@ -623,14 +644,23 @@ export function applyTexture(config: Partial<TextureConfig>): void {
 
   if (!textureLayer) return;
 
+  const canvasEl = (textureLayer.getCanvas() as unknown as { _canvas?: HTMLCanvasElement })?._canvas;
+
   if (currentTextureConfig.type === 'none') {
     if (textureNode) {
       textureNode.destroy();
       textureNode = null;
-      textureLayer.batchDraw();
     }
+    if (canvasEl) {
+      canvasEl.style.mixBlendMode = 'normal';
+    }
+    textureLayer.batchDraw();
     notifyChange();
     return;
+  }
+
+  if (canvasEl) {
+    canvasEl.style.mixBlendMode = currentTextureConfig.blendMode;
   }
 
   const textureCanvas = generateTextureCanvas(
@@ -775,13 +805,29 @@ export function updateShapeShadow(opts: Partial<ShapeShadowConfig>): void {
 
   const offset = calculateOffsetFromAngle(shapeShadowConfig.angle, shapeShadowConfig.distance);
 
-  if (shapeShadowNode && currentVectorShapeFunc) {
+  if (shapeShadowNode) {
     const hasShadow = shapeShadowConfig.distance > 0 || shapeShadowConfig.blur > 0;
     shapeShadowNode.visible(hasShadow);
     shapeShadowNode.shadowColor(shapeShadowConfig.color);
     shapeShadowNode.shadowBlur(shapeShadowConfig.blur);
     shapeShadowNode.shadowOffset(offset);
-    shapeShadowNode.shadowOpacity(hasShadow ? 0.7 : 0);
+    shapeShadowNode.shadowOpacity(hasShadow ? 0.75 : 0);
+
+    // Şablon seçilmemişse görselin de kart çerçevesine oturması için maskGroup'u senkronize et
+    if (!currentVectorShapeFunc && !customMaskImageNode && maskGroup) {
+      if (hasShadow) {
+        const pad = 14;
+        maskGroup.clipFunc((ctx) => {
+          const rawCtx =
+            (ctx as unknown as { _context: CanvasRenderingContext2D })._context ||
+            (ctx as unknown as CanvasRenderingContext2D);
+          rawCtx.beginPath();
+          rawCtx.rect(pad, pad, STAGE_WIDTH - pad * 2, STAGE_HEIGHT - pad * 2);
+        });
+      } else {
+        maskGroup.clipFunc(null as unknown as () => void);
+      }
+    }
   }
 
   photoLayer?.batchDraw();
