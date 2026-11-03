@@ -142,9 +142,9 @@ export function initCanvas(
   bgLayer = new Konva.Layer();
   photoLayer = new Konva.Layer();
   lensLayer = new Konva.Layer({ listening: true });
-  subjectShadowLayer = new Konva.Layer();
+  subjectShadowLayer = new Konva.Layer({ listening: false });
   textLayer = new Konva.Layer();
-  fgLayer = new Konva.Layer();
+  fgLayer = new Konva.Layer({ listening: false });
   textureLayer = new Konva.Layer({ id: 'textureLayer', name: 'texture-layer', listening: false });
   guideLayer = new Konva.Layer({ listening: false });
 
@@ -472,6 +472,9 @@ export function updateSelectedText(opts: TextNodeOptions): void {
 }
 
 function selectText(node: Konva.Text): void {
+  if (activeLensId) {
+    selectLens(null);
+  }
   selectedTextNode = node;
   if (textTransformer) {
     textTransformer.nodes([node]);
@@ -1048,10 +1051,14 @@ export function getSelectedLens(): SerializedLensItem | null {
 }
 
 export function selectLens(id: string | null): void {
+  if (id !== null) {
+    deselectText();
+  }
   activeLensId = id;
   const portal = id ? lensPortals.find((p) => p.item.id === id) : null;
 
   if (portal && lensTransformer) {
+    portal.group.moveToTop();
     lensTransformer.nodes([portal.group]);
     lensTransformer.visible(true);
     lensTransformer.moveToTop();
@@ -1194,7 +1201,7 @@ export function addLensPortal(options?: Partial<SerializedLensItem>): string {
     y: 0,
     width: item.width,
     height: item.height,
-    listening: false,
+    listening: true,
   });
 
   const borderNode = new Konva.Shape({
@@ -1211,7 +1218,7 @@ export function addLensPortal(options?: Partial<SerializedLensItem>): string {
     strokeWidth: 2,
     shadowColor: 'rgba(255, 255, 255, 0.6)',
     shadowBlur: 6,
-    listening: false,
+    listening: true,
   });
 
   group.add(imageNode, borderNode);
@@ -1223,19 +1230,31 @@ export function addLensPortal(options?: Partial<SerializedLensItem>): string {
     borderNode,
   };
 
-  group.on('click tap dragstart', (e) => {
+  const handleSelect = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     e.cancelBubble = true;
     deselectText();
     selectLens(item.id);
+  };
+
+  group.on('pointerdown mousedown touchstart click tap dragstart', handleSelect);
+
+  group.on('mouseenter', () => {
+    if (stage) stage.container().style.cursor = 'move';
+  });
+
+  group.on('mouseleave', () => {
+    if (stage) stage.container().style.cursor = 'default';
   });
 
   group.on('dragmove', () => {
+    handleSnapping(group);
     item.x = Math.round(group.x());
     item.y = Math.round(group.y());
     renderLensPortal(portalInstance);
   });
 
   group.on('dragend', () => {
+    clearSnapGuides();
     notifyChange();
   });
 
@@ -1246,7 +1265,7 @@ export function addLensPortal(options?: Partial<SerializedLensItem>): string {
     group.scaleY(1);
     item.width = Math.max(40, Math.round(item.width * scaleX));
     item.height = Math.max(40, Math.round(item.height * scaleY));
-    item.rotation = Math.round(group.rotation());
+    item.rotation = Math.round((((group.rotation() % 360) + 360) % 360));
     group.width(item.width);
     group.height(item.height);
     group.offsetX(item.width / 2);
@@ -1254,6 +1273,7 @@ export function addLensPortal(options?: Partial<SerializedLensItem>): string {
     item.x = Math.round(group.x());
     item.y = Math.round(group.y());
     renderLensPortal(portalInstance);
+    if (onLensSelectCallback) onLensSelectCallback({ ...item });
   });
 
   group.on('transformend', () => {
@@ -1307,6 +1327,9 @@ export function updateSelectedLens(options: Partial<SerializedLensItem>): void {
 
   Object.assign(portal.item, options);
   renderLensPortal(portal);
+  if (lensTransformer && lensTransformer.nodes().length > 0) {
+    lensTransformer.forceUpdate();
+  }
   notifyChange();
 }
 

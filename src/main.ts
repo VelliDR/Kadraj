@@ -58,6 +58,7 @@ import {
   setOnLensSelect,
   setLensMaskForActive,
   invertLensMaskForActive,
+  getLensPortalsList,
 } from './core/canvasEngine';
 
 import { processImageFile } from './core/imageLoader';
@@ -854,6 +855,7 @@ function syncUIFromSnapshot(s: ProjectSnapshot): void {
   }
 
   syncTypographyUI();
+  renderLensPortalChips();
   renderLayerList();
 }
 
@@ -1329,6 +1331,68 @@ btnFilterMono?.addEventListener('click', () => {
 // FAZ 6: ÇOKLU OPTİK MERCEK VE CAM PORTALLARI (MULTI-LENS FX)
 // =========================================================
 
+function renderLensPortalChips(): void {
+  const container = document.getElementById('lensPortalChipsContainer');
+  if (!container) return;
+
+  const portals = getLensPortalsList();
+  const selected = getSelectedLens();
+
+  if (portals.length === 0) {
+    container.innerHTML = '<span class="lens-chip-empty">Portallar kapalı. "➕ Portal Ekle" veya şablon seçin.</span>';
+    return;
+  }
+
+  container.innerHTML = '';
+  const shapeNames: Record<string, string> = {
+    diamond: 'Elmas',
+    circle: 'Daire',
+    hexagon: 'Altıgen',
+    cinemaFrame: 'Sinema',
+    blob: 'Damla',
+    custom: 'Özel',
+  };
+
+  const tintColors: Record<string, { label: string; color: string }> = {
+    none: { label: 'Doğal', color: '#e0e0e0' },
+    emerald: { label: '🌿 Zümrüt', color: '#00e676' },
+    sky: { label: '🌊 Mavi', color: '#00b0ff' },
+    storm: { label: '⛈️ Fırtına', color: '#90a4ae' },
+    amber: { label: '🍯 Kehribar', color: '#ffb300' },
+    rose: { label: '🌸 Pembe', color: '#ff4081' },
+  };
+
+  portals.forEach((p, idx) => {
+    const isSelected = selected ? p.id === selected.id : idx === 0;
+    const shapeLabel = shapeNames[p.shapeKey] || p.shapeKey;
+    const tintInfo = tintColors[p.tint] || { label: p.tint, color: '#e0e0e0' };
+
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = `lens-chip ${isSelected ? 'active' : ''}`;
+    chip.dataset.portalId = p.id;
+    chip.title = `Portal #${idx + 1} (${shapeLabel}) - Tıklayarak Düzenle / Seç`;
+
+    chip.innerHTML = `
+      <span class="lens-chip-index">#${idx + 1}</span>
+      <span class="lens-chip-label">${shapeLabel}</span>
+      <span class="lens-chip-tint" style="color: ${tintInfo.color}">${tintInfo.label}</span>
+    `;
+
+    chip.addEventListener('click', (e) => {
+      e.stopPropagation();
+      selectLens(p.id);
+      pushHistorySnapshot();
+    });
+
+    container.appendChild(chip);
+
+    if (isSelected) {
+      chip.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
+  });
+}
+
 setOnLensSelect((selected) => {
   const badge = document.getElementById('lensActivePortalBadge');
   if (selected) {
@@ -1355,6 +1419,7 @@ setOnLensSelect((selected) => {
   } else {
     if (badge) badge.innerText = `💎 ŞEKİL:`;
   }
+  renderLensPortalChips();
   renderLayerList();
 });
 
@@ -1378,6 +1443,7 @@ document.querySelectorAll<HTMLButtonElement>('[data-lens-preset]').forEach((btn)
       statusText.innerText = `${name} kompozisyonu tuvale yerleştirildi!`;
     }
     pushHistorySnapshot();
+    renderLensPortalChips();
     renderLayerList();
   });
 });
@@ -1391,6 +1457,7 @@ btnAddLensPortal?.addEventListener('click', () => {
   addLensPortal();
   if (statusText) statusText.innerText = '➕ Yeni Cam Portalı tuvale eklendi!';
   pushHistorySnapshot();
+  renderLensPortalChips();
   renderLayerList();
 });
 
@@ -1398,6 +1465,7 @@ btnDeleteLensPortal?.addEventListener('click', () => {
   removeLensPortal();
   if (statusText) statusText.innerText = '🗑️ Seçili Cam Portalı silindi.';
   pushHistorySnapshot();
+  renderLensPortalChips();
   renderLayerList();
 });
 
@@ -1409,6 +1477,7 @@ document.querySelectorAll<HTMLButtonElement>('[data-lens-shape]').forEach((btn) 
     document.querySelectorAll<HTMLButtonElement>('[data-lens-shape]').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
     pushHistorySnapshot();
+    renderLensPortalChips();
     renderLayerList();
   });
 });
@@ -1426,6 +1495,8 @@ document.querySelectorAll<HTMLButtonElement>('[data-tint]').forEach((btn) => {
     document.querySelectorAll<HTMLButtonElement>('[data-tint]').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
     pushHistorySnapshot();
+    renderLensPortalChips();
+    renderLayerList();
   });
 });
 
@@ -1604,6 +1675,7 @@ async function checkForSavedDraft(): Promise<void> {
 }
 
 checkForSavedDraft();
+renderLensPortalChips();
 renderLayerList();
 
 // Responsive pencere ve oryantasyon değişimi
