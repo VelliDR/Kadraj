@@ -476,7 +476,7 @@ setupDial({
   min: 0,
   max: 100,
   step: 1,
-  initialValue: 25,
+  initialValue: 50,
   label: 'Doku Opaklığı',
   format: (v) => '%' + Math.round(v),
   onChange: (val) => {
@@ -1228,7 +1228,7 @@ btnReset?.addEventListener('click', async () => {
 
   if (textureSelect) textureSelect.value = 'none';
   if (textureBlendSelect) textureBlendSelect.value = 'multiply';
-  dials['textureOpacityRange']?.setValue(25, false);
+  dials['textureOpacityRange']?.setValue(50, false);
   dials['brightnessRange']?.setValue(0, false);
   dials['contrastRange']?.setValue(0, false);
   dials['saturationRange']?.setValue(0, false);
@@ -1264,6 +1264,9 @@ textureSelect?.addEventListener('change', (e) => {
   applyTexture({ type });
   const cfg = getTextureConfig();
   if (textureBlendSelect) textureBlendSelect.value = cfg.blendMode;
+  if (dials['textureOpacityRange']) {
+    dials['textureOpacityRange'].setValue(Math.round(cfg.opacity * 100), false);
+  }
   pushHistorySnapshot();
   renderLayerList();
 });

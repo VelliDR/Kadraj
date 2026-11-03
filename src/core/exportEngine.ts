@@ -103,6 +103,17 @@ function applyExportTexture(
   ctx.restore();
 }
 
+function captureStageClean(stage: Konva.Stage, scaleFactor: number): HTMLCanvasElement {
+  const texLayer = stage.findOne('#textureLayer') || stage.findOne('.texture-layer');
+  const wasVisible = texLayer ? texLayer.visible() : false;
+  if (texLayer) texLayer.visible(false);
+
+  const rawCanvas = stage.toCanvas({ pixelRatio: scaleFactor });
+
+  if (texLayer) texLayer.visible(wasVisible);
+  return rawCanvas;
+}
+
 /**
  * 300 DPI Kayıpsız PNG Çıktısı üretir.
  */
@@ -114,7 +125,7 @@ export function exportHighResolutionPNG(
   textureConfig?: TextureConfig
 ): string {
   const scaleFactor = PRINT_BASE_WIDTH / currentStageWidth;
-  const rawCanvas = stage.toCanvas({ pixelRatio: scaleFactor });
+  const rawCanvas = captureStageClean(stage, scaleFactor);
 
   // Yüksek çözünürlüklü dokuyu 300 DPI olarak uygula
   if (textureConfig && textureConfig.type !== 'none') {
@@ -140,7 +151,7 @@ export function exportWebP(
   textureConfig?: TextureConfig
 ): string {
   const scaleFactor = PRINT_BASE_WIDTH / currentStageWidth;
-  const rawCanvas = stage.toCanvas({ pixelRatio: scaleFactor });
+  const rawCanvas = captureStageClean(stage, scaleFactor);
 
   if (textureConfig && textureConfig.type !== 'none') {
     applyExportTexture(rawCanvas, textureConfig);

@@ -101,7 +101,7 @@ let edgeOverlapRafId: number | null = null;
 
 const currentTextureConfig: TextureConfig = {
   type: 'none',
-  opacity: 0.25,
+  opacity: 0.50,
   blendMode: 'multiply',
 };
 
@@ -145,7 +145,7 @@ export function initCanvas(
   subjectShadowLayer = new Konva.Layer();
   textLayer = new Konva.Layer();
   fgLayer = new Konva.Layer();
-  textureLayer = new Konva.Layer({ listening: false });
+  textureLayer = new Konva.Layer({ id: 'textureLayer', name: 'texture-layer', listening: false });
   guideLayer = new Konva.Layer({ listening: false });
 
   stage.add(bgLayer, photoLayer, lensLayer, subjectShadowLayer, textLayer, fgLayer, textureLayer, guideLayer);
@@ -596,8 +596,16 @@ export function getLayersList(): LayerItem[] {
 export function toggleLayerVisibility(id: string): void {
   if (id === 'layer_texture') {
     if (textureNode) {
-      textureNode.visible(!textureNode.visible());
+      const isVisible = !textureNode.visible();
+      textureNode.visible(isVisible);
+      const canvasEl =
+        textureLayer?.getNativeCanvasElement?.() ||
+        (textureLayer?.getCanvas() as unknown as { _canvas?: HTMLCanvasElement })?._canvas;
+      if (canvasEl) {
+        canvasEl.style.display = isVisible ? 'block' : 'none';
+      }
       textureLayer?.batchDraw();
+      notifyChange();
     }
   } else if (lensPortals.some((p) => p.item.id === id)) {
     const portal = lensPortals.find((p) => p.item.id === id);
@@ -752,13 +760,18 @@ export function applyTexture(config: Partial<TextureConfig>): void {
     if (config.blendMode === undefined) {
       currentTextureConfig.blendMode = getDefaultBlendModeForTexture(config.type);
     }
+    if (config.type !== 'none' && currentTextureConfig.opacity < 0.25) {
+      currentTextureConfig.opacity = 0.50;
+    }
   }
   if (config.opacity !== undefined) currentTextureConfig.opacity = config.opacity;
   if (config.blendMode !== undefined) currentTextureConfig.blendMode = config.blendMode;
 
   if (!textureLayer) return;
 
-  const canvasEl = (textureLayer.getCanvas() as unknown as { _canvas?: HTMLCanvasElement })?._canvas;
+  const canvasEl =
+    textureLayer.getNativeCanvasElement?.() ||
+    (textureLayer.getCanvas() as unknown as { _canvas?: HTMLCanvasElement })?._canvas;
 
   if (currentTextureConfig.type === 'none') {
     if (textureNode) {
@@ -767,14 +780,11 @@ export function applyTexture(config: Partial<TextureConfig>): void {
     }
     if (canvasEl) {
       canvasEl.style.mixBlendMode = 'normal';
+      canvasEl.style.opacity = '1';
     }
     textureLayer.batchDraw();
     notifyChange();
     return;
-  }
-
-  if (canvasEl) {
-    canvasEl.style.mixBlendMode = currentTextureConfig.blendMode;
   }
 
   const textureCanvas = generateTextureCanvas(
@@ -789,8 +799,9 @@ export function applyTexture(config: Partial<TextureConfig>): void {
     textureNode.image(textureCanvas);
     textureNode.width(STAGE_WIDTH);
     textureNode.height(STAGE_HEIGHT);
-    textureNode.opacity(currentTextureConfig.opacity);
-    textureNode.globalCompositeOperation(currentTextureConfig.blendMode);
+    textureNode.opacity(1.0);
+    textureNode.globalCompositeOperation('source-over');
+    textureNode.visible(true);
   } else {
     textureNode = new Konva.Image({
       image: textureCanvas,
@@ -798,11 +809,18 @@ export function applyTexture(config: Partial<TextureConfig>): void {
       y: 0,
       width: STAGE_WIDTH,
       height: STAGE_HEIGHT,
-      opacity: currentTextureConfig.opacity,
-      globalCompositeOperation: currentTextureConfig.blendMode,
+      opacity: 1.0,
+      globalCompositeOperation: 'source-over',
       listening: false,
     });
     textureLayer.add(textureNode);
+  }
+
+  if (canvasEl) {
+    canvasEl.style.mixBlendMode = currentTextureConfig.blendMode;
+    canvasEl.style.opacity = String(currentTextureConfig.opacity);
+    canvasEl.style.pointerEvents = 'none';
+    canvasEl.style.display = 'block';
   }
 
   textureLayer.batchDraw();
