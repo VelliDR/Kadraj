@@ -62,12 +62,16 @@ export type SegmentationModelName = 'isnet_quint8' | 'isnet_fp16' | 'isnet';
 
 export type CanvasPreset = 'auto' | 'a4_p' | 'a4_l' | 'a5_p' | 'sq_1_1' | 'story_9_16' | 'book_4_5';
 
-export type ExportFormat = 'png' | 'pdf' | 'webp' | 'svg';
+export type ExportFormat = 'png' | 'jpeg' | 'pdf' | 'webp' | 'svg';
+export type ExportResolution = 'original' | 'a4' | 'a3' | 'screen';
 
 export interface ExportOptions {
   format: ExportFormat;
+  resolution?: ExportResolution;
   withCropMarks?: boolean;
   quality?: number;
+  originalImageWidth?: number;
+  originalImageHeight?: number;
 }
 
 export type TextureType = 'none' | 'parchment' | 'newsprint' | 'coated' | 'grain' | 'linen' | 'watercolor' | 'folded';

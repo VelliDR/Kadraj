@@ -790,7 +790,7 @@ html, body {
 
 .export-format-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
   gap: 8px;
 }
 
@@ -833,6 +833,54 @@ html, body {
   font-size: 10px;
   color: var(--m3-text-secondary);
   line-height: 1.3;
+}
+
+/* Çözünürlük Seçim Izgarası */
+.export-res-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.res-card {
+  background-color: var(--m3-surface-high);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 9px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+  transition: var(--m3-spring);
+  position: relative;
+}
+
+.res-card input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.res-card:hover {
+  background-color: var(--m3-surface-hover);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.res-card.active {
+  border-color: var(--m3-pastel-sand);
+  background-color: rgba(209, 196, 169, 0.15);
+}
+
+.res-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--m3-text-primary);
+}
+
+.res-desc {
+  font-size: 9.5px;
+  color: var(--m3-text-secondary);
+  line-height: 1.25;
 }
 
 .modal-footer {

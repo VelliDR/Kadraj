@@ -115,24 +115,71 @@ function captureStageClean(stage: Konva.Stage, scaleFactor: number): HTMLCanvasE
 }
 
 /**
- * 300 DPI Kayıpsız PNG Çıktısı üretir.
+ * Kullanıcının seçtiği çözünürlük moduna göre dışa aktarma piksel genişliğini belirler.
+ */
+export function getExportTargetWidth(
+  _currentStageWidth: number,
+  options?: ExportOptions
+): number {
+  const res = options?.resolution || 'original';
+  if (res === 'original') {
+    if (options?.originalImageWidth && options.originalImageWidth > 0) {
+      return Math.round(options.originalImageWidth);
+    }
+    return PRINT_BASE_WIDTH;
+  }
+  if (res === 'a3') {
+    return 4960; // 300 DPI A3 / 2x Ultra HD
+  }
+  if (res === 'screen') {
+    return 1240; // Web / Dijital Ekran
+  }
+  // 'a4' veya standart
+  return PRINT_BASE_WIDTH; // 2480 (300 DPI A4)
+}
+
+/**
+ * Saydam arka planların JPEG çıktısında siyah piksellere dönüşmesini önlemek için
+ * beyaz opak zemin oluşturur.
+ */
+function ensureOpaqueCanvas(sourceCanvas: HTMLCanvasElement, bgColor = '#ffffff'): HTMLCanvasElement {
+  const opaqueCanvas = document.createElement('canvas');
+  opaqueCanvas.width = sourceCanvas.width;
+  opaqueCanvas.height = sourceCanvas.height;
+  const ctx = opaqueCanvas.getContext('2d');
+  if (!ctx) return sourceCanvas;
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, opaqueCanvas.width, opaqueCanvas.height);
+  ctx.drawImage(sourceCanvas, 0, 0);
+  return opaqueCanvas;
+}
+
+/**
+ * Kayıpsız PNG Çıktısı üretir.
  */
 export function exportHighResolutionPNG(
   stage: Konva.Stage,
   currentStageWidth: number,
   _currentStageHeight?: number,
   withCropMarks = false,
-  textureConfig?: TextureConfig
+  textureConfig?: TextureConfig,
+  options?: ExportOptions
 ): string {
-  const scaleFactor = PRINT_BASE_WIDTH / currentStageWidth;
+  const mergedOptions: ExportOptions = {
+    format: 'png',
+    withCropMarks,
+    ...options,
+  };
+  const targetWidth = getExportTargetWidth(currentStageWidth, mergedOptions);
+  const scaleFactor = targetWidth / currentStageWidth;
   const rawCanvas = captureStageClean(stage, scaleFactor);
 
-  // Yüksek çözünürlüklü dokuyu 300 DPI olarak uygula
+  // Yüksek çözünürlüklü dokuyu uygula
   if (textureConfig && textureConfig.type !== 'none') {
     applyExportTexture(rawCanvas, textureConfig);
   }
 
-  if (!withCropMarks) {
+  if (!mergedOptions.withCropMarks) {
     return rawCanvas.toDataURL('image/png');
   }
 
@@ -142,22 +189,62 @@ export function exportHighResolutionPNG(
 }
 
 /**
- * Yüksek kalitede WebP çıktısı üretir (Düşük dosya boyutu).
+ * Yüksek kalitede JPEG / JPG çıktısı üretir (Beyaz opak zemin destekli).
  */
-export function exportWebP(
+export function exportHighResolutionJPEG(
   stage: Konva.Stage,
   currentStageWidth: number,
-  quality = 0.92,
-  textureConfig?: TextureConfig
+  quality = 0.95,
+  withCropMarks = false,
+  textureConfig?: TextureConfig,
+  options?: ExportOptions
 ): string {
-  const scaleFactor = PRINT_BASE_WIDTH / currentStageWidth;
+  const mergedOptions: ExportOptions = {
+    format: 'jpeg',
+    quality,
+    withCropMarks,
+    ...options,
+  };
+  const targetWidth = getExportTargetWidth(currentStageWidth, mergedOptions);
+  const scaleFactor = targetWidth / currentStageWidth;
   const rawCanvas = captureStageClean(stage, scaleFactor);
 
   if (textureConfig && textureConfig.type !== 'none') {
     applyExportTexture(rawCanvas, textureConfig);
   }
 
-  return rawCanvas.toDataURL('image/webp', quality);
+  const finalCanvas = mergedOptions.withCropMarks
+    ? addCropMarksToCanvas(rawCanvas, Math.round(scaleFactor * 12))
+    : rawCanvas;
+
+  const opaqueCanvas = ensureOpaqueCanvas(finalCanvas, '#ffffff');
+  return opaqueCanvas.toDataURL('image/jpeg', mergedOptions.quality ?? 0.95);
+}
+
+/**
+ * Yüksek kalitede WebP çıktısı üretir (Düşük dosya boyutu).
+ */
+export function exportWebP(
+  stage: Konva.Stage,
+  currentStageWidth: number,
+  quality = 0.92,
+  textureConfig?: TextureConfig,
+  options?: ExportOptions
+): string {
+  const mergedOptions: ExportOptions = {
+    format: 'webp',
+    quality,
+    ...options,
+  };
+  const targetWidth = getExportTargetWidth(currentStageWidth, mergedOptions);
+  const scaleFactor = targetWidth / currentStageWidth;
+  const rawCanvas = captureStageClean(stage, scaleFactor);
+
+  if (textureConfig && textureConfig.type !== 'none') {
+    applyExportTexture(rawCanvas, textureConfig);
+  }
+
+  return rawCanvas.toDataURL('image/webp', mergedOptions.quality ?? 0.92);
 }
 
 /**
@@ -168,7 +255,8 @@ export async function exportPDF(
   currentStageWidth: number,
   preset: CanvasPreset = 'auto',
   withCropMarks = false,
-  textureConfig?: TextureConfig
+  textureConfig?: TextureConfig,
+  options?: ExportOptions
 ): Promise<Blob> {
   const { jsPDF } = await import('jspdf');
 
@@ -177,7 +265,8 @@ export async function exportPDF(
     currentStageWidth,
     undefined,
     withCropMarks,
-    textureConfig
+    textureConfig,
+    options
   );
 
   let orientation: 'portrait' | 'landscape' = 'portrait';
@@ -330,22 +419,37 @@ export async function exportProject(
   textureConfig?: TextureConfig
 ): Promise<{ dataUrl?: string; blob?: Blob; extension: string }> {
   switch (options.format) {
+    case 'jpeg': {
+      const dataUrl = exportHighResolutionJPEG(
+        stage,
+        stageWidth,
+        options.quality ?? 0.95,
+        options.withCropMarks,
+        textureConfig,
+        options
+      );
+      return { dataUrl, extension: 'jpg' };
+    }
     case 'pdf': {
       const blob = await exportPDF(
         stage,
         stageWidth,
         preset,
         options.withCropMarks,
-        textureConfig
+        textureConfig,
+        options
       );
       return { blob, extension: 'pdf' };
     }
     case 'webp': {
-      const dataUrl = exportWebP(stage, stageWidth, options.quality, textureConfig);
+      const dataUrl = exportWebP(stage, stageWidth, options.quality ?? 0.92, textureConfig, options);
       return { dataUrl, extension: 'webp' };
     }
     case 'svg': {
-      const svgText = exportShapeSVG(shapeKey, 2480, 3508);
+      const targetWidth = getExportTargetWidth(stageWidth, options);
+      const aspect = stage.height() / stage.width();
+      const targetHeight = Math.round(targetWidth * aspect);
+      const svgText = exportShapeSVG(shapeKey, targetWidth, targetHeight);
       const blob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
       return { blob, extension: 'svg' };
     }
@@ -356,7 +460,8 @@ export async function exportProject(
         stageWidth,
         undefined,
         options.withCropMarks,
-        textureConfig
+        textureConfig,
+        options
       );
       return { dataUrl, extension: 'png' };
     }

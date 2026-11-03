@@ -59,6 +59,7 @@ import {
   setLensMaskForActive,
   invertLensMaskForActive,
   getLensPortalsList,
+  getOriginalImageResolution,
 } from './core/canvasEngine';
 
 import { processImageFile } from './core/imageLoader';
@@ -81,6 +82,7 @@ import type {
   StoredProject,
   CanvasPreset,
   ExportFormat,
+  ExportResolution,
   TextureType,
   TextureBlendMode,
   LensTint,
@@ -1544,14 +1546,36 @@ presetSelect?.addEventListener('change', (e) => {
 });
 
 const btnDownload = document.getElementById('btnDownload') as HTMLButtonElement | null;
-btnDownload?.addEventListener('click', () => {
+
+function openExportModal(): void {
   if (!hasImage()) return showWarning();
+  const res = getOriginalImageResolution();
+  const titleEl = document.getElementById('exportResOriginalTitle');
+  const descEl = document.getElementById('exportResOriginalDesc');
+  if (res) {
+    if (titleEl) titleEl.innerText = `🎯 Orijinal (${res.width} px)`;
+    if (descEl) descEl.innerText = `${res.width} × ${res.height} px (1:1 Kayıpsız)`;
+  } else {
+    if (titleEl) titleEl.innerText = `🎯 Orijinal (1:1)`;
+    if (descEl) descEl.innerText = `Girdi görselinin tam çözünürlüğü`;
+  }
   exportModal?.classList.remove('hidden');
-});
+}
+
+btnDownload?.addEventListener('click', openExportModal);
 
 document.querySelectorAll<HTMLLabelElement>('.format-card').forEach((card) => {
   card.addEventListener('click', () => {
     document.querySelectorAll('.format-card').forEach((c) => c.classList.remove('active'));
+    card.classList.add('active');
+    const radio = card.querySelector<HTMLInputElement>('input[type="radio"]');
+    if (radio) radio.checked = true;
+  });
+});
+
+document.querySelectorAll<HTMLLabelElement>('.res-card').forEach((card) => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.res-card').forEach((c) => c.classList.remove('active'));
     card.classList.add('active');
     const radio = card.querySelector<HTMLInputElement>('input[type="radio"]');
     if (radio) radio.checked = true;
@@ -1567,8 +1591,12 @@ exportModal?.addEventListener('click', (e) => {
 btnConfirmExport?.addEventListener('click', async () => {
   if (!hasImage()) return showWarning();
 
-  const selectedRadio = document.querySelector<HTMLInputElement>('input[name="exportFormat"]:checked');
-  const format = (selectedRadio?.value || 'png') as ExportFormat;
+  const selectedFormatRadio = document.querySelector<HTMLInputElement>('input[name="exportFormat"]:checked');
+  const format = (selectedFormatRadio?.value || 'png') as ExportFormat;
+
+  const selectedResRadio = document.querySelector<HTMLInputElement>('input[name="exportResolution"]:checked');
+  const resolution = (selectedResRadio?.value || 'original') as ExportResolution;
+
   const withCropMarks = chkCropMarks?.checked || false;
 
   exportModal?.classList.add('hidden');
@@ -1578,6 +1606,7 @@ btnConfirmExport?.addEventListener('click', async () => {
     try {
       const result = await exportMultiFormat({
         format,
+        resolution,
         withCropMarks,
         quality: 0.95,
       });
@@ -1600,7 +1629,7 @@ btnConfirmExport?.addEventListener('click', async () => {
         URL.revokeObjectURL(objectUrl);
       }
 
-      if (statusText) statusText.innerText = `${format.toUpperCase()} belgesi başarıyla indirildi!`;
+      if (statusText) statusText.innerText = `${format.toUpperCase()} (${resolution.toUpperCase()}) belgesi başarıyla indirildi!`;
     } catch (err) {
       console.error(err);
       if (statusText) statusText.innerText = 'Dışa aktarma sırasında hata oluştu.';

@@ -1781,6 +1781,12 @@ export async function exportMultiFormat(
   deselectText();
   selectLens(null);
   if (!stage) throw new Error('Stage henüz başlatılmadı.');
+
+  if (originalImageObj && !options.originalImageWidth) {
+    options.originalImageWidth = originalImageObj.naturalWidth || originalImageObj.width;
+    options.originalImageHeight = originalImageObj.naturalHeight || originalImageObj.height;
+  }
+
   return exportProject(stage, STAGE_WIDTH, currentPreset, options, currentShapeKey, currentTextureConfig);
 }
 
@@ -1790,6 +1796,14 @@ export function hasImage(): boolean {
 
 export function getOriginalImage(): HTMLImageElement | null {
   return originalImageObj;
+}
+
+export function getOriginalImageResolution(): { width: number; height: number } | null {
+  if (!originalImageObj) return null;
+  return {
+    width: originalImageObj.naturalWidth || originalImageObj.width,
+    height: originalImageObj.naturalHeight || originalImageObj.height,
+  };
 }
 
 export function hasForegroundSubject(): boolean {

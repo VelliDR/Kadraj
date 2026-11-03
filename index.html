@@ -558,9 +558,14 @@
                 <span class="format-desc">300 DPI Kayıpsız Matbaa</span>
               </label>
               <label class="format-card">
+                <input type="radio" name="exportFormat" value="jpeg" />
+                <span class="format-title">📷 JPG</span>
+                <span class="format-desc">Yüksek Kalite Fotoğraf</span>
+              </label>
+              <label class="format-card">
                 <input type="radio" name="exportFormat" value="pdf" />
                 <span class="format-title">📕 PDF</span>
-                <span class="format-desc">Baskıya Hazır Vektörel Belge</span>
+                <span class="format-desc">Baskıya Hazır Belge</span>
               </label>
               <label class="format-card">
                 <input type="radio" name="exportFormat" value="webp" />
@@ -574,8 +579,33 @@
               </label>
             </div>
 
+            <!-- Çözünürlük Seçenekleri -->
+            <span class="modal-label" style="margin-top: 10px;">Çıktı Çözünürlüğü:</span>
+            <div class="export-res-grid" id="exportResolutionGrid">
+              <label class="res-card active" id="cardResOriginal">
+                <input type="radio" name="exportResolution" value="original" checked />
+                <span class="res-title" id="exportResOriginalTitle">🎯 Orijinal (1:1)</span>
+                <span class="res-desc" id="exportResOriginalDesc">Girdi görselinin tam çözünürlüğü</span>
+              </label>
+              <label class="res-card" id="cardResA4">
+                <input type="radio" name="exportResolution" value="a4" />
+                <span class="res-title">📄 A4 Baskı</span>
+                <span class="res-desc">2480 px (300 DPI Standardı)</span>
+              </label>
+              <label class="res-card" id="cardResA3">
+                <input type="radio" name="exportResolution" value="a3" />
+                <span class="res-title">📐 A3 / Ultra</span>
+                <span class="res-desc">4960 px (Poster / 2x Boyut)</span>
+              </label>
+              <label class="res-card" id="cardResScreen">
+                <input type="radio" name="exportResolution" value="screen" />
+                <span class="res-title">📱 Web / Ekran</span>
+                <span class="res-desc">1240 px (Hızlı Paylaşım)</span>
+              </label>
+            </div>
+
             <div class="modal-options">
-              <label class="toggle-pill" style="margin-top: 10px;">
+              <label class="toggle-pill" style="margin-top: 6px;">
                 <input type="checkbox" id="chkCropMarks" />
                 <span>✂️ Matbaa Kesim Çizgileri & Taşma Payı (Bleed)</span>
               </label>
