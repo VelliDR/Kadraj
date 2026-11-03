@@ -47,6 +47,8 @@ import {
   getTextureConfig,
   getRawSegmentationMask,
   handleCanvasResize,
+  setLensConfig,
+  getCurrentShapeKey,
 } from './core/canvasEngine';
 
 import { processImageFile } from './core/imageLoader';
@@ -71,6 +73,7 @@ import type {
   ExportFormat,
   TextureType,
   TextureBlendMode,
+  LensTint,
 } from './types';
 
 // DOM Elemanları
@@ -120,6 +123,12 @@ const textureBlendSelect = document.getElementById('textureBlendSelect') as HTML
 const btnFilterReset = document.getElementById('btnFilterReset') as HTMLButtonElement | null;
 const btnFilterSepia = document.getElementById('btnFilterSepia') as HTMLButtonElement | null;
 const btnFilterMono = document.getElementById('btnFilterMono') as HTMLButtonElement | null;
+
+// Faz 6: Mercek Portalı (Lens FX) Elemanları
+const chkLensEnabled = document.getElementById('chkLensEnabled') as HTMLInputElement | null;
+const chkLensReflect = document.getElementById('chkLensReflect') as HTMLInputElement | null;
+const lensMaskInput = document.getElementById('lensMaskInput') as HTMLInputElement | null;
+const btnInvertLensMask = document.getElementById('btnInvertLensMask') as HTMLButtonElement | null;
 
 // Durum değişkenleri
 let customMaskRawImg: HTMLImageElement | null = null;
@@ -541,6 +550,46 @@ setupDial({
 });
 
 // =========================================================
+// FAZ 6: MERCEK PORTALI (LENS FX) KADRANLARI
+// =========================================================
+
+setupDial({
+  id: 'lensZoomRange',
+  displayId: 'lensZoomDisplay',
+  min: 1.0,
+  max: 3.0,
+  step: 0.05,
+  initialValue: 1.6,
+  label: 'Mercek Büyütmesi',
+  format: (v) => v.toFixed(2) + 'x',
+  onChange: (val) => setLensConfig({ zoom: val }),
+});
+
+setupDial({
+  id: 'lensBulgeRange',
+  displayId: 'lensBulgeDisplay',
+  min: 0,
+  max: 100,
+  step: 1,
+  initialValue: 35,
+  label: 'Balıkgözü / Bombe',
+  format: (v) => '%' + Math.round(v),
+  onChange: (val) => setLensConfig({ bulge: val }),
+});
+
+setupDial({
+  id: 'lensAberrationRange',
+  displayId: 'lensAberrationDisplay',
+  min: 0,
+  max: 10,
+  step: 0.5,
+  initialValue: 3,
+  label: 'Prizmatik Aberasyon',
+  format: (v) => v.toFixed(1) + 'px',
+  onChange: (val) => setLensConfig({ aberration: val }),
+});
+
+// =========================================================
 // FAZ 3: KATMAN LİSTESİ RENDER MOTORU (LAYER STACK)
 // =========================================================
 
@@ -741,6 +790,19 @@ function syncUIFromSnapshot(s: ProjectSnapshot): void {
   if (s.edgeRefine) {
     dials['erodePixelsRange']?.setValue(s.edgeRefine.erodePixels, false);
     dials['featherBlurRange']?.setValue(s.edgeRefine.featherBlur, false);
+  }
+
+  // Faz 6: Mercek Portalı (Lens FX) Senkronizasyonu
+  if (s.lens) {
+    if (chkLensEnabled) chkLensEnabled.checked = s.lens.enabled;
+    if (chkLensReflect) chkLensReflect.checked = s.lens.glassReflect;
+    dials['lensZoomRange']?.setValue(s.lens.zoom, false);
+    dials['lensBulgeRange']?.setValue(s.lens.bulge, false);
+    dials['lensAberrationRange']?.setValue(s.lens.aberration, false);
+
+    document.querySelectorAll<HTMLButtonElement>('[data-tint]').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.tint === s.lens?.tint);
+    });
   }
 
   syncTypographyUI();
@@ -1104,6 +1166,17 @@ btnReset?.addEventListener('click', async () => {
   if (shapeShadowColor) shapeShadowColor.value = '#000000';
   if (subjShadowColor) subjShadowColor.value = '#1a1a1a';
 
+  setLensConfig({ enabled: false, tint: 'none', glassReflect: true, zoom: 1.6, bulge: 35, aberration: 3 });
+  if (chkLensEnabled) chkLensEnabled.checked = false;
+  if (chkLensReflect) chkLensReflect.checked = true;
+  btnInvertLensMask?.classList.add('hidden');
+  dials['lensZoomRange']?.setValue(1.6, false);
+  dials['lensBulgeRange']?.setValue(35, false);
+  dials['lensAberrationRange']?.setValue(3, false);
+  document.querySelectorAll<HTMLButtonElement>('[data-tint]').forEach((b) => {
+    b.classList.toggle('active', b.dataset.tint === 'none');
+  });
+
   renderLayerList();
   if (statusText) statusText.innerText = 'Sıfırlandı ve taslak temizlendi.';
 });
@@ -1169,6 +1242,102 @@ btnFilterMono?.addEventListener('click', () => {
   dials['contrastRange']?.setValue(20, false);
   dials['saturationRange']?.setValue(-100, false);
   dials['noiseRange']?.setValue(10, false);
+  pushHistorySnapshot();
+});
+
+// =========================================================
+// FAZ 6: OPTİK MERCEK VE CAM PORTALLARI (LENS FX) LİSTENER'LARI
+// =========================================================
+
+chkLensEnabled?.addEventListener('change', (e) => {
+  const target = e.target as HTMLInputElement;
+  if (!hasImage()) {
+    target.checked = false;
+    return showWarning();
+  }
+
+  const enabled = target.checked;
+
+  if (enabled) {
+    const currentShape = getCurrentShapeKey();
+    if (!currentShape && !customMaskRawImg) {
+      applyVectorShape(SHAPES.diamond, 'diamond');
+      document.querySelectorAll<HTMLButtonElement>('.shape-pill').forEach((b) => {
+        b.classList.toggle('active', b.dataset.shape === 'diamond');
+      });
+    }
+    setLensConfig({ enabled: true });
+    if (statusText) statusText.innerText = '🔍 Mercek Portalı aktif edildi (Optik distorsiyon devrede).';
+  } else {
+    setLensConfig({ enabled: false });
+    if (statusText) statusText.innerText = 'Mercek Portalı kapatıldı.';
+  }
+
+  pushHistorySnapshot();
+  renderLayerList();
+});
+
+chkLensReflect?.addEventListener('change', (e) => {
+  const target = e.target as HTMLInputElement;
+  setLensConfig({ glassReflect: target.checked });
+  pushHistorySnapshot();
+});
+
+document.querySelectorAll<HTMLButtonElement>('[data-tint]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const tint = (btn.dataset.tint || 'none') as LensTint;
+    setLensConfig({ tint });
+    document.querySelectorAll<HTMLButtonElement>('[data-tint]').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+    pushHistorySnapshot();
+  });
+});
+
+// Kendi Şeklini / Maskesini Yükleme (Custom Shape Upload)
+lensMaskInput?.addEventListener('change', async (e) => {
+  const target = e.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file || !hasImage()) return showWarning();
+
+  showLoading('Özel şekil taranıyor (%100 kontrast analizi)...');
+  try {
+    customMaskRawImg = await processImageFile(file);
+    isMaskInverted = false;
+    if (customMaskRawImg) {
+      const maskCanvas = generatePixelMaskCanvas(
+        customMaskRawImg,
+        customMaskRawImg.width,
+        customMaskRawImg.height,
+        isMaskInverted
+      );
+      applyPixelMaskNode(maskCanvas, isMaskInverted);
+      setLensConfig({ enabled: true });
+      if (chkLensEnabled) chkLensEnabled.checked = true;
+      btnInvertLensMask?.classList.remove('hidden');
+      btnInvertMask?.classList.remove('hidden');
+      if (statusText) statusText.innerText = '✨ Özel şekil maskesi yüklendi ve Mercek Portalı uygulandı!';
+      pushHistorySnapshot();
+      renderLayerList();
+    }
+  } catch (err) {
+    console.error('Özel maske yüklenemedi:', err);
+    if (statusText) statusText.innerText = 'Maske yüklenirken hata oluştu.';
+  } finally {
+    hideLoading();
+  }
+});
+
+btnInvertLensMask?.addEventListener('click', () => {
+  if (!customMaskRawImg) return;
+  isMaskInverted = !isMaskInverted;
+  const maskCanvas = generatePixelMaskCanvas(
+    customMaskRawImg,
+    customMaskRawImg.width,
+    customMaskRawImg.height,
+    isMaskInverted
+  );
+  applyPixelMaskNode(maskCanvas, isMaskInverted);
+  setLensConfig({ enabled: true });
   pushHistorySnapshot();
 });
 

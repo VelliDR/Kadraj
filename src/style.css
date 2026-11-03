@@ -844,6 +844,31 @@ html, body {
   align-items: center;
 }
 
+/* İpucu ve Uyarı Rozeti */
+.lens-tip-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: rgba(255, 170, 0, 0.08);
+  border: 1px solid rgba(255, 170, 0, 0.25);
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--m3-text-primary);
+  width: 100%;
+}
+
+.lens-tip-box .tip-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.lens-tip-box strong {
+  color: #ffaa00;
+}
+
 /* =========================================================
    📱 MOBİL DUYARLILIK (RESPONSIVE KORUMA)
    ========================================================= */

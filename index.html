@@ -82,6 +82,7 @@
           <button class="dock-tab" data-tab="tab-shadows"><span class="dock-tab-icon">🎭</span> Gölge</button>
           <button class="dock-tab" data-tab="tab-shapes"><span class="dock-tab-icon">📐</span> Şablon</button>
           <button class="dock-tab" data-tab="tab-effects"><span class="dock-tab-icon">✨</span> Efekt & Doku</button>
+          <button class="dock-tab" data-tab="tab-lens"><span class="dock-tab-icon">🔍</span> Mercek FX</button>
         </nav>
 
         <div class="dock-content">
@@ -414,6 +415,84 @@
                   <div class="dial-center-mark"></div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <!-- 6. Faz 6: Optik Mercek ve Cam Portalı Paneli (Lens FX) -->
+          <div class="dock-panel" id="tab-lens">
+            <div class="panel-row">
+              <label class="toggle-pill">
+                <input type="checkbox" id="chkLensEnabled" />
+                <span>🔍 Mercek Portalı Aktif</span>
+              </label>
+
+              <label class="toggle-pill">
+                <input type="checkbox" id="chkLensReflect" checked />
+                <span>✨ Cam Işığı</span>
+              </label>
+
+              <!-- Mercek Büyütmesi (Zoom) -->
+              <div class="dial-container" style="max-width: 110px;">
+                <div class="dial-header">
+                  <span>BÜYÜTME</span>
+                  <span class="dial-value" id="lensZoomDisplay">1.6x</span>
+                </div>
+                <div class="dial-track" id="lensZoomRange">
+                  <div class="dial-center-mark"></div>
+                </div>
+              </div>
+
+              <!-- Balıkgözü / Küresel Bombe -->
+              <div class="dial-container" style="max-width: 110px;">
+                <div class="dial-header">
+                  <span>BOMBE (BULGE)</span>
+                  <span class="dial-value" id="lensBulgeDisplay">%35</span>
+                </div>
+                <div class="dial-track" id="lensBulgeRange">
+                  <div class="dial-center-mark"></div>
+                </div>
+              </div>
+
+              <!-- Prizmatik Kromatik Aberasyon -->
+              <div class="dial-container" style="max-width: 110px;">
+                <div class="dial-header">
+                  <span>PRİZMA (RGB)</span>
+                  <span class="dial-value" id="lensAberrationDisplay">3px</span>
+                </div>
+                <div class="dial-track" id="lensAberrationRange">
+                  <div class="dial-center-mark"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Cam Renk Filtresi & Kendi Şeklini Yükleme Satırı -->
+            <div class="panel-row" style="margin-top: 4px;">
+              <span class="panel-section-title">🪟 CAM TONU:</span>
+              <div class="m3-button-group" title="Cam Rengi">
+                <button type="button" class="group-btn active" data-tint="none" id="btnLensTintNone">Doğal</button>
+                <button type="button" class="group-btn" data-tint="emerald" id="btnLensTintEmerald" style="color: #00e676;">🌿 Zümrüt</button>
+                <button type="button" class="group-btn" data-tint="sky" id="btnLensTintSky" style="color: #00b0ff;">🌊 Mavi</button>
+                <button type="button" class="group-btn" data-tint="storm" id="btnLensTintStorm" style="color: #90a4ae;">⛈️ Fırtına</button>
+                <button type="button" class="group-btn" data-tint="amber" id="btnLensTintAmber" style="color: #ffb300;">🍯 Kehribar</button>
+                <button type="button" class="group-btn" data-tint="rose" id="btnLensTintRose" style="color: #ff4081;">🌸 Pembe</button>
+              </div>
+
+              <div class="divider-v"></div>
+
+              <!-- Kendi Şeklini Yükleme Butonu -->
+              <label class="m3-btn m3-btn-sand file-label" style="font-size: 11px;">
+                📁 Kendi Şeklini / Maskeni Yükle
+                <input type="file" id="lensMaskInput" accept="image/*,.heic,.heif" />
+              </label>
+              <button id="btnInvertLensMask" class="m3-btn m3-btn-tonal hidden" title="Şekli Ters Çevir">🔄 Ters Çevir</button>
+            </div>
+
+            <!-- Kullanıcının Özel İstediği Kontrast Uyarısı / İpucu Kutusu -->
+            <div class="lens-tip-box">
+              <span class="tip-icon">💡</span>
+              <span class="tip-text">
+                <strong>İpucu:</strong> Şeklin veya metnin kusursuz algılanması için <strong>%100 yüksek kontrastlı</strong> bir görselle deneyin (Örn: Beyaz zemin üzerine siyah şekil/metin veya şeffaf arka planlı PNG).
+              </span>
             </div>
           </div>
         </div>

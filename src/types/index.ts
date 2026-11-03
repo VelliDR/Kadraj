@@ -95,6 +95,17 @@ export interface EdgeRefineConfig {
   featherBlur: number;
 }
 
+export type LensTint = 'none' | 'emerald' | 'sky' | 'storm' | 'amber' | 'rose';
+
+export interface LensConfig {
+  enabled: boolean;
+  zoom: number;         // 1.0 to 3.0
+  bulge: number;        // 0 to 100 (balıkgözü / küresel bombe)
+  aberration: number;   // 0 to 10 (kromatik aberasyon / RGB kırılması)
+  tint: LensTint;       // Minami tarzı renkli cam filtresi
+  glassReflect: boolean;// Cam parıltısı ve kenar yansıması
+}
+
 export interface ProjectSnapshot {
   canvasWidth: number;
   canvasHeight: number;
@@ -113,6 +124,7 @@ export interface ProjectSnapshot {
   hasSubjectCutout: boolean;
   texture?: TextureConfig;
   adjustments?: ImageAdjustments;
+  lens?: LensConfig;
 }
 
 export interface StoredProject {
@@ -125,7 +137,7 @@ export interface StoredProject {
 
 export interface LayerItem {
   id: string;
-  type: 'image' | 'subject' | 'text' | 'shape' | 'texture';
+  type: 'image' | 'subject' | 'text' | 'shape' | 'texture' | 'lens';
   name: string;
   visible: boolean;
   selected?: boolean;

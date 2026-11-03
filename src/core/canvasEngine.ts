@@ -5,6 +5,7 @@ import { refineSegmentationMask } from './edgeRefineEngine';
 import { generateTextureCanvas, getDefaultBlendModeForTexture } from './textureEngine';
 import { exportHighResolutionPNG, exportProject } from './exportEngine';
 import { SHAPES } from './shapes';
+import { generateLensCanvas, DEFAULT_LENS_CONFIG } from './lensEngine';
 import type {
   ShapeFunction,
   ShapeShadowConfig,
@@ -18,6 +19,7 @@ import type {
   TextureConfig,
   ImageAdjustments,
   EdgeRefineConfig,
+  LensConfig,
 } from '../types';
 
 export let STAGE_WIDTH = 360;
@@ -26,6 +28,7 @@ export let STAGE_HEIGHT = 509;
 let stage: Konva.Stage | null = null;
 let bgLayer: Konva.Layer | null = null;
 let photoLayer: Konva.Layer | null = null;
+let lensLayer: Konva.Layer | null = null;
 let subjectShadowLayer: Konva.Layer | null = null;
 let textLayer: Konva.Layer | null = null;
 let fgLayer: Konva.Layer | null = null;
@@ -35,6 +38,11 @@ let guideLayer: Konva.Layer | null = null;
 let bgRect: Konva.Rect | null = null;
 let maskGroup: Konva.Group | null = null;
 let shapeShadowNode: Konva.Shape | null = null;
+
+let lensGroup: Konva.Group | null = null;
+let lensImageNode: Konva.Image | null = null;
+let lensBorderNode: Konva.Shape | null = null;
+const currentLensConfig: LensConfig = { ...DEFAULT_LENS_CONFIG };
 
 let currentImageNode: Konva.Image | null = null;
 let foregroundImageNode: Konva.Image | null = null;
@@ -121,13 +129,43 @@ export function initCanvas(
 
   bgLayer = new Konva.Layer();
   photoLayer = new Konva.Layer();
+  lensLayer = new Konva.Layer({ listening: false });
   subjectShadowLayer = new Konva.Layer();
   textLayer = new Konva.Layer();
   fgLayer = new Konva.Layer();
   textureLayer = new Konva.Layer({ listening: false });
   guideLayer = new Konva.Layer({ listening: false });
 
-  stage.add(bgLayer, photoLayer, subjectShadowLayer, textLayer, fgLayer, textureLayer, guideLayer);
+  stage.add(bgLayer, photoLayer, lensLayer, subjectShadowLayer, textLayer, fgLayer, textureLayer, guideLayer);
+
+  lensGroup = new Konva.Group({ x: 0, y: 0, visible: false, draggable: false });
+  lensImageNode = new Konva.Image({
+    image: document.createElement('canvas'),
+    x: 0,
+    y: 0,
+    width: STAGE_WIDTH,
+    height: STAGE_HEIGHT,
+    listening: false,
+  });
+  lensBorderNode = new Konva.Shape({
+    sceneFunc: (ctx, shape) => {
+      if (currentVectorShapeFunc) {
+        const rawCtx =
+          (ctx as unknown as { _context: CanvasRenderingContext2D })._context ||
+          (ctx as unknown as CanvasRenderingContext2D);
+        rawCtx.beginPath();
+        currentVectorShapeFunc(rawCtx, STAGE_WIDTH, STAGE_HEIGHT);
+        ctx.strokeShape(shape);
+      }
+    },
+    stroke: 'rgba(255, 255, 255, 0.75)',
+    strokeWidth: 2,
+    shadowColor: 'rgba(255, 255, 255, 0.6)',
+    shadowBlur: 6,
+    listening: false,
+  });
+  lensGroup.add(lensImageNode, lensBorderNode);
+  lensLayer.add(lensGroup);
 
   bgRect = new Konva.Rect({
     x: 0,
@@ -275,6 +313,12 @@ export function applyCanvasPreset(preset: CanvasPreset): void {
 
     if (currentTextureConfig.type !== 'none') {
       applyTexture({});
+    }
+
+    if (lensImageNode && lensGroup) {
+      lensImageNode.width(STAGE_WIDTH);
+      lensImageNode.height(STAGE_HEIGHT);
+      updateLensRender();
     }
 
     stage.batchDraw();
@@ -461,7 +505,18 @@ export function getLayersList(): LayerItem[] {
     }
   }
 
-  // 4. Şekil / Maske Katmanı
+  // 4. Mercek Portalı Katmanı (Aktifse)
+  if (currentLensConfig.enabled) {
+    list.push({
+      id: 'layer_lens',
+      type: 'lens',
+      name: `🔍 Mercek Portalı (${currentLensConfig.tint !== 'none' ? currentLensConfig.tint : 'Cam'})`,
+      visible: lensGroup ? lensGroup.visible() : true,
+      selected: false,
+    });
+  }
+
+  // 5. Şekil / Maske Katmanı
   if (currentVectorShapeFunc || customMaskImageNode) {
     list.push({
       id: 'layer_shape',
@@ -472,7 +527,7 @@ export function getLayersList(): LayerItem[] {
     });
   }
 
-  // 5. Ana Görsel Katmanı
+  // 6. Ana Görsel Katmanı
   if (currentImageNode) {
     list.push({
       id: 'layer_image',
@@ -491,6 +546,11 @@ export function toggleLayerVisibility(id: string): void {
     if (textureNode) {
       textureNode.visible(!textureNode.visible());
       textureLayer?.batchDraw();
+    }
+  } else if (id === 'layer_lens') {
+    if (lensGroup) {
+      lensGroup.visible(!lensGroup.visible());
+      lensLayer?.batchDraw();
     }
   } else if (id === 'layer_subject') {
     if (foregroundImageNode) {
@@ -897,6 +957,74 @@ function renderSubjectShadow(): void {
   subjectShadowLayer?.batchDraw();
 }
 
+// =========================================================
+// FAZ 6: OPTİK MERCEK VE CAM PORTALLARI (LENS FX)
+// =========================================================
+
+export function updateLensRender(): void {
+  if (!lensLayer || !lensGroup || !lensImageNode) return;
+
+  if (!currentLensConfig.enabled || !originalImageObj || (!currentVectorShapeFunc && !customMaskImageNode)) {
+    lensGroup.visible(false);
+    lensLayer.batchDraw();
+    notifyChange();
+    return;
+  }
+
+  const lensCanvas = generateLensCanvas(
+    originalImageObj,
+    STAGE_WIDTH,
+    STAGE_HEIGHT,
+    currentLensConfig,
+    currentImageNode
+      ? {
+          x: currentImageNode.x(),
+          y: currentImageNode.y(),
+          width: currentImageNode.width(),
+          height: currentImageNode.height(),
+        }
+      : null
+  );
+
+  lensImageNode.image(lensCanvas);
+  lensImageNode.width(STAGE_WIDTH);
+  lensImageNode.height(STAGE_HEIGHT);
+
+  if (currentVectorShapeFunc) {
+    lensGroup.clipFunc((ctx) => {
+      const rawCtx =
+        (ctx as unknown as { _context: CanvasRenderingContext2D })._context ||
+        (ctx as unknown as CanvasRenderingContext2D);
+      currentVectorShapeFunc!(rawCtx, STAGE_WIDTH, STAGE_HEIGHT);
+    });
+    if (lensBorderNode) {
+      lensBorderNode.visible(currentLensConfig.glassReflect);
+    }
+  } else if (customMaskImageNode) {
+    lensGroup.clipFunc(null as unknown as () => void);
+    if (lensBorderNode) lensBorderNode.visible(false);
+  }
+
+  lensGroup.visible(true);
+  lensLayer.batchDraw();
+  notifyChange();
+}
+
+export function setLensConfig(cfg: Partial<LensConfig>): void {
+  if (cfg.enabled !== undefined) currentLensConfig.enabled = cfg.enabled;
+  if (cfg.zoom !== undefined) currentLensConfig.zoom = cfg.zoom;
+  if (cfg.bulge !== undefined) currentLensConfig.bulge = cfg.bulge;
+  if (cfg.aberration !== undefined) currentLensConfig.aberration = cfg.aberration;
+  if (cfg.tint !== undefined) currentLensConfig.tint = cfg.tint;
+  if (cfg.glassReflect !== undefined) currentLensConfig.glassReflect = cfg.glassReflect;
+
+  updateLensRender();
+}
+
+export function getLensConfig(): LensConfig {
+  return { ...currentLensConfig };
+}
+
 export function applyVectorShape(shapeFunction: ShapeFunction, shapeKey?: string): void {
   clearCustomPixelMask();
   currentVectorShapeFunc = shapeFunction;
@@ -910,6 +1038,7 @@ export function applyVectorShape(shapeFunction: ShapeFunction, shapeKey?: string
   });
 
   updateShapeShadow({});
+  updateLensRender();
   photoLayer?.batchDraw();
   notifyChange();
 }
@@ -936,6 +1065,7 @@ export function applyPixelMaskNode(maskCanvas: HTMLCanvasElement, isInverted = f
   currentImageNode.globalCompositeOperation('source-in');
   maskGroup.destroyChildren();
   maskGroup.add(customMaskImageNode, currentImageNode);
+  updateLensRender();
   photoLayer?.batchDraw();
   notifyChange();
 }
@@ -975,6 +1105,7 @@ export function setZoom(zoomFactor: number): void {
     subjectShadowLayer?.batchDraw();
   }
 
+  updateLensRender();
   photoLayer?.batchDraw();
   notifyChange();
 }
@@ -1103,6 +1234,7 @@ export function getProjectSnapshot(): ProjectSnapshot {
     hasSubjectCutout: foregroundImageNode !== null,
     texture: { ...currentTextureConfig },
     adjustments: { ...currentImageAdjustments },
+    lens: { ...currentLensConfig },
   };
 }
 
@@ -1212,6 +1344,13 @@ export function restoreProjectSnapshot(snapshot: ProjectSnapshot): void {
     textLayer.batchDraw();
   }
 
+  // 11. Mercek Portalı (Lens FX)
+  if (snapshot.lens) {
+    setLensConfig(snapshot.lens);
+  } else {
+    setLensConfig({ enabled: false });
+  }
+
   photoLayer?.batchDraw();
   subjectShadowLayer?.batchDraw();
   fgLayer?.batchDraw();
@@ -1250,6 +1389,10 @@ export function resetEngine(): void {
   currentImageAdjustments.sepia = false;
   currentImageAdjustments.noise = 0;
   currentImageAdjustments.grayscale = false;
+
+  currentLensConfig.enabled = false;
+  if (lensGroup) lensGroup.visible(false);
+  lensLayer?.batchDraw();
 
   if (maskGroup) {
     maskGroup.clipFunc(null as unknown as () => void);
