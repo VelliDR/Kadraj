@@ -1,5 +1,5 @@
 // src/core/lensEngine.ts
-import type { LensConfig, LensTint } from '../types';
+import type { LensConfig, LensTint, SerializedLensItem } from '../types';
 
 export const DEFAULT_LENS_CONFIG: LensConfig = {
   enabled: false,
@@ -10,7 +10,7 @@ export const DEFAULT_LENS_CONFIG: LensConfig = {
   glassReflect: true,
 };
 
-const TINT_COLORS: Record<LensTint, string | null> = {
+export const TINT_COLORS: Record<LensTint, string | null> = {
   none: null,
   emerald: 'rgba(0, 230, 118, 0.28)', // Minami Zümrüt Yeşili
   sky: 'rgba(0, 176, 255, 0.28)',     // Gökyüzü Cam Mavisi
@@ -22,71 +22,85 @@ const TINT_COLORS: Record<LensTint, string | null> = {
 /**
  * Optik mercek distorsiyonu (Büyüteç, Balıkgözü bombe ve Kromatik Aberasyon)
  * uygular ve saf Canvas 2D üzerinde çizim üretir.
+ * 
+ * Çoklu mercek desteği için odak noktası (focusPoint) alabilir.
  */
 export function generateLensCanvas(
   source: HTMLImageElement | HTMLCanvasElement,
-  stageWidth: number,
-  stageHeight: number,
-  config: LensConfig,
-  imagePosition?: { x: number; y: number; width: number; height: number } | null
+  lensWidth: number,
+  lensHeight: number,
+  config: LensConfig | SerializedLensItem,
+  imagePosition?: { x: number; y: number; width: number; height: number } | null,
+  focusPoint?: { x: number; y: number } | null
 ): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
-  canvas.width = stageWidth;
-  canvas.height = stageHeight;
+  canvas.width = Math.max(10, Math.round(lensWidth));
+  canvas.height = Math.max(10, Math.round(lensHeight));
   const ctx = canvas.getContext('2d');
   if (!ctx) return canvas;
 
-  // 1. ADIM: Mercek Büyütmesi (Lens Zoom)
-  // Görüntüyü mercek zoom faktörüyle sahne merkezinden büyüt
-  const zoom = Math.max(1.0, config.zoom);
-  const cx = stageWidth / 2;
-  const cy = stageHeight / 2;
+  const w = canvas.width;
+  const h = canvas.height;
+  const cx = w / 2;
+  const cy = h / 2;
+  const zoom = Math.max(1.0, config.zoom || 1.6);
 
+  // 1. ADIM: Mercek Büyütmesi (Lens Zoom) ve Odaklama
   ctx.save();
   ctx.translate(cx, cy);
   ctx.scale(zoom, zoom);
-  ctx.translate(-cx, -cy);
 
-  if (imagePosition) {
+  if (focusPoint && imagePosition) {
+    // Merceğin merkezini sahnede durduğu odak noktasına göre ötele
+    const offsetX = imagePosition.x - focusPoint.x;
+    const offsetY = imagePosition.y - focusPoint.y;
+    ctx.drawImage(source, offsetX, offsetY, imagePosition.width, imagePosition.height);
+  } else if (imagePosition) {
+    ctx.translate(-w / 2, -h / 2);
     ctx.drawImage(source, imagePosition.x, imagePosition.y, imagePosition.width, imagePosition.height);
   } else {
-    ctx.drawImage(source, 0, 0, stageWidth, stageHeight);
+    ctx.translate(-w / 2, -h / 2);
+    ctx.drawImage(source, 0, 0, w, h);
   }
   ctx.restore();
 
   // 2. ADIM: Balıkgözü / Küresel Bombe ve Kromatik Aberasyon (Prizma Kırılması)
-  if (config.bulge > 0 || config.aberration > 0) {
-    applyOpticalDistortion(ctx, stageWidth, stageHeight, config.bulge, config.aberration);
+  const bulge = config.bulge !== undefined ? config.bulge : 35;
+  const aberration = config.aberration !== undefined ? config.aberration : 3;
+
+  if (bulge > 0 || aberration > 0) {
+    applyOpticalDistortion(ctx, w, h, bulge, aberration);
   }
 
   // 3. ADIM: Renkli Cam Filtresi (Minami Prizma Tonları)
-  const tintColor = TINT_COLORS[config.tint];
+  const tint = config.tint || 'none';
+  const tintColor = TINT_COLORS[tint];
   if (tintColor) {
     ctx.save();
     ctx.fillStyle = tintColor;
     ctx.globalCompositeOperation = 'multiply';
-    ctx.fillRect(0, 0, stageWidth, stageHeight);
+    ctx.fillRect(0, 0, w, h);
 
-    // Canlılığı artırmak için hafif color-dodge geçişi
-    ctx.fillStyle = tintColor.replace(/[\d.]+\)$/, '0.12)');
+    // Canlılığı artırmak için hafif color-dodge/overlay geçişi
+    ctx.fillStyle = tintColor.replace(/[\d.]+\)$/, '0.14)');
     ctx.globalCompositeOperation = 'overlay';
-    ctx.fillRect(0, 0, stageWidth, stageHeight);
+    ctx.fillRect(0, 0, w, h);
     ctx.restore();
   }
 
   // 4. ADIM: Cam Yansıması ve Parıltı (Glass Sheen / Specular Light)
-  if (config.glassReflect) {
+  if (config.glassReflect !== false) {
     ctx.save();
-    const grad = ctx.createLinearGradient(0, 0, stageWidth, stageHeight);
-    grad.addColorStop(0, 'rgba(255, 255, 255, 0.22)');
-    grad.addColorStop(0.35, 'rgba(255, 255, 255, 0.05)');
+    const grad = ctx.createLinearGradient(0, 0, w, h);
+    grad.addColorStop(0, 'rgba(255, 255, 255, 0.28)');
+    grad.addColorStop(0.35, 'rgba(255, 255, 255, 0.06)');
     grad.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
     grad.addColorStop(0.85, 'rgba(255, 255, 255, 0.08)');
-    grad.addColorStop(1, 'rgba(255, 255, 255, 0.18)');
+    grad.addColorStop(1, 'rgba(255, 255, 255, 0.22)');
 
     ctx.fillStyle = grad;
     ctx.globalCompositeOperation = 'screen';
-    ctx.fillRect(0, 0, stageWidth, stageHeight);
+    ctx.fillRect(0, 0, w, h);
     ctx.restore();
   }
 

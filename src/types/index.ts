@@ -96,6 +96,7 @@ export interface EdgeRefineConfig {
 }
 
 export type LensTint = 'none' | 'emerald' | 'sky' | 'storm' | 'amber' | 'rose';
+export type LensLayoutPreset = 'custom' | 'minamiMv' | 'diagonal' | 'triad' | 'scatter' | 'duo';
 
 export interface LensConfig {
   enabled: boolean;
@@ -104,6 +105,22 @@ export interface LensConfig {
   aberration: number;   // 0 to 10 (kromatik aberasyon / RGB kırılması)
   tint: LensTint;       // Minami tarzı renkli cam filtresi
   glassReflect: boolean;// Cam parıltısı ve kenar yansıması
+}
+
+export interface SerializedLensItem {
+  id: string;
+  shapeKey: string;     // 'diamond', 'circle', 'cinemaFrame', 'hexagon', 'blob', 'custom' vb.
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  zoom: number;         // 1.0 - 3.0
+  bulge: number;        // 0 - 100
+  aberration: number;   // 0 - 10
+  tint: LensTint;
+  glassReflect: boolean;
+  visible: boolean;
 }
 
 export interface ProjectSnapshot {
@@ -125,6 +142,7 @@ export interface ProjectSnapshot {
   texture?: TextureConfig;
   adjustments?: ImageAdjustments;
   lens?: LensConfig;
+  lenses?: SerializedLensItem[];
 }
 
 export interface StoredProject {

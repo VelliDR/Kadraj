@@ -20,6 +20,8 @@ import type {
   ImageAdjustments,
   EdgeRefineConfig,
   LensConfig,
+  SerializedLensItem,
+  LensLayoutPreset,
 } from '../types';
 
 export let STAGE_WIDTH = 360;
@@ -39,9 +41,18 @@ let bgRect: Konva.Rect | null = null;
 let maskGroup: Konva.Group | null = null;
 let shapeShadowNode: Konva.Shape | null = null;
 
-let lensGroup: Konva.Group | null = null;
-let lensImageNode: Konva.Image | null = null;
-let lensBorderNode: Konva.Shape | null = null;
+export interface LensPortalInstance {
+  item: SerializedLensItem;
+  group: Konva.Group;
+  imageNode: Konva.Image;
+  borderNode: Konva.Shape;
+  customMaskCanvas?: HTMLCanvasElement | null;
+}
+
+let lensPortals: LensPortalInstance[] = [];
+let activeLensId: string | null = null;
+let lensTransformer: Konva.Transformer | null = null;
+let onLensSelectCallback: ((lens: SerializedLensItem | null) => void) | null = null;
 const currentLensConfig: LensConfig = { ...DEFAULT_LENS_CONFIG };
 
 let currentImageNode: Konva.Image | null = null;
@@ -129,7 +140,7 @@ export function initCanvas(
 
   bgLayer = new Konva.Layer();
   photoLayer = new Konva.Layer();
-  lensLayer = new Konva.Layer({ listening: false });
+  lensLayer = new Konva.Layer({ listening: true });
   subjectShadowLayer = new Konva.Layer();
   textLayer = new Konva.Layer();
   fgLayer = new Konva.Layer();
@@ -138,34 +149,21 @@ export function initCanvas(
 
   stage.add(bgLayer, photoLayer, lensLayer, subjectShadowLayer, textLayer, fgLayer, textureLayer, guideLayer);
 
-  lensGroup = new Konva.Group({ x: 0, y: 0, visible: false, draggable: false });
-  lensImageNode = new Konva.Image({
-    image: document.createElement('canvas'),
-    x: 0,
-    y: 0,
-    width: STAGE_WIDTH,
-    height: STAGE_HEIGHT,
-    listening: false,
-  });
-  lensBorderNode = new Konva.Shape({
-    sceneFunc: (ctx, shape) => {
-      if (currentVectorShapeFunc) {
-        const rawCtx =
-          (ctx as unknown as { _context: CanvasRenderingContext2D })._context ||
-          (ctx as unknown as CanvasRenderingContext2D);
-        rawCtx.beginPath();
-        currentVectorShapeFunc(rawCtx, STAGE_WIDTH, STAGE_HEIGHT);
-        ctx.strokeShape(shape);
-      }
+  lensTransformer = new Konva.Transformer({
+    nodes: [],
+    enabledAnchors: ['top-left', 'top-right', 'bottom-left', 'bottom-right'],
+    rotateEnabled: true,
+    borderStroke: '#00e676',
+    borderStrokeWidth: 1.5,
+    anchorStroke: '#00e676',
+    anchorFill: '#ffffff',
+    anchorSize: 8,
+    boundBoxFunc: (oldBox, newBox) => {
+      if (newBox.width < 40 || newBox.height < 40) return oldBox;
+      return newBox;
     },
-    stroke: 'rgba(255, 255, 255, 0.75)',
-    strokeWidth: 2,
-    shadowColor: 'rgba(255, 255, 255, 0.6)',
-    shadowBlur: 6,
-    listening: false,
   });
-  lensGroup.add(lensImageNode, lensBorderNode);
-  lensLayer.add(lensGroup);
+  lensLayer.add(lensTransformer);
 
   bgRect = new Konva.Rect({
     x: 0,
@@ -202,7 +200,10 @@ export function initCanvas(
   photoLayer.add(maskGroup);
 
   stage.on('click tap', (e) => {
-    if (e.target === stage || e.target === bgRect) deselectText();
+    if (e.target === stage || e.target === bgRect) {
+      deselectText();
+      selectLens(null);
+    }
   });
 }
 
@@ -315,10 +316,8 @@ export function applyCanvasPreset(preset: CanvasPreset): void {
       applyTexture({});
     }
 
-    if (lensImageNode && lensGroup) {
-      lensImageNode.width(STAGE_WIDTH);
-      lensImageNode.height(STAGE_HEIGHT);
-      updateLensRender();
+    if (lensPortals.length > 0) {
+      renderAllLenses();
     }
 
     stage.batchDraw();
@@ -365,6 +364,9 @@ export function loadMainImage(imgObj: HTMLImageElement): void {
         y: pos.y + offset.y,
       });
       subjectShadowLayer?.batchDraw();
+    }
+    if (lensPortals.length > 0) {
+      renderAllLenses();
     }
   });
 
@@ -505,16 +507,24 @@ export function getLayersList(): LayerItem[] {
     }
   }
 
-  // 4. Mercek Portalı Katmanı (Aktifse)
-  if (currentLensConfig.enabled) {
+  // 4. Mercek Portalları Katmanları (Çoklu Portallar)
+  lensPortals.forEach((p, idx) => {
+    const shapeLabel =
+      p.item.shapeKey === 'diamond' ? 'Elmas' :
+      p.item.shapeKey === 'circle' ? 'Daire' :
+      p.item.shapeKey === 'hexagon' ? 'Altıgen' :
+      p.item.shapeKey === 'cinemaFrame' ? 'Sinema' :
+      p.item.shapeKey === 'blob' ? 'Damla' :
+      p.item.shapeKey === 'custom' ? 'Özel Şekil' : p.item.shapeKey;
+
     list.push({
-      id: 'layer_lens',
+      id: p.item.id,
       type: 'lens',
-      name: `🔍 Mercek Portalı (${currentLensConfig.tint !== 'none' ? currentLensConfig.tint : 'Cam'})`,
-      visible: lensGroup ? lensGroup.visible() : true,
-      selected: false,
+      name: `🔍 Portal #${idx + 1} (${shapeLabel})`,
+      visible: p.item.visible,
+      selected: p.item.id === activeLensId,
     });
-  }
+  });
 
   // 5. Şekil / Maske Katmanı
   if (currentVectorShapeFunc || customMaskImageNode) {
@@ -547,10 +557,12 @@ export function toggleLayerVisibility(id: string): void {
       textureNode.visible(!textureNode.visible());
       textureLayer?.batchDraw();
     }
-  } else if (id === 'layer_lens') {
-    if (lensGroup) {
-      lensGroup.visible(!lensGroup.visible());
-      lensLayer?.batchDraw();
+  } else if (lensPortals.some((p) => p.item.id === id)) {
+    const portal = lensPortals.find((p) => p.item.id === id);
+    if (portal) {
+      portal.item.visible = !portal.item.visible;
+      renderLensPortal(portal);
+      notifyChange();
     }
   } else if (id === 'layer_subject') {
     if (foregroundImageNode) {
@@ -958,70 +970,623 @@ function renderSubjectShadow(): void {
 }
 
 // =========================================================
-// FAZ 6: OPTİK MERCEK VE CAM PORTALLARI (LENS FX)
+// FAZ 6: ÇOKLU OPTİK MERCEK VE CAM PORTALLARI (MULTI-LENS FX)
 // =========================================================
 
-export function updateLensRender(): void {
-  if (!lensLayer || !lensGroup || !lensImageNode) return;
+export function setOnLensSelect(callback: (lens: SerializedLensItem | null) => void): void {
+  onLensSelectCallback = callback;
+}
 
-  if (!currentLensConfig.enabled || !originalImageObj || (!currentVectorShapeFunc && !customMaskImageNode)) {
-    lensGroup.visible(false);
+export function getLensPortalsList(): SerializedLensItem[] {
+  return lensPortals.map((p) => ({ ...p.item }));
+}
+
+export function getSelectedLens(): SerializedLensItem | null {
+  if (!activeLensId) return null;
+  const portal = lensPortals.find((p) => p.item.id === activeLensId);
+  return portal ? { ...portal.item } : null;
+}
+
+export function selectLens(id: string | null): void {
+  activeLensId = id;
+  const portal = id ? lensPortals.find((p) => p.item.id === id) : null;
+
+  if (portal && lensTransformer) {
+    lensTransformer.nodes([portal.group]);
+    lensTransformer.visible(true);
+    lensTransformer.moveToTop();
+  } else if (lensTransformer) {
+    lensTransformer.nodes([]);
+    lensTransformer.visible(false);
+  }
+
+  lensLayer?.batchDraw();
+
+  if (onLensSelectCallback) {
+    onLensSelectCallback(portal ? { ...portal.item } : null);
+  }
+}
+
+export function renderLensPortal(portal: LensPortalInstance): void {
+  if (!lensLayer) return;
+
+  if (!originalImageObj || !portal.item.visible) {
+    portal.group.visible(false);
     lensLayer.batchDraw();
-    notifyChange();
     return;
   }
 
+  portal.group.visible(true);
+  portal.group.x(portal.item.x);
+  portal.group.y(portal.item.y);
+  portal.group.rotation(portal.item.rotation);
+  portal.group.width(portal.item.width);
+  portal.group.height(portal.item.height);
+  portal.group.offsetX(portal.item.width / 2);
+  portal.group.offsetY(portal.item.height / 2);
+
+  const focusPoint = { x: portal.item.x, y: portal.item.y };
+  const imagePosition = currentImageNode
+    ? {
+        x: currentImageNode.x(),
+        y: currentImageNode.y(),
+        width: currentImageNode.width(),
+        height: currentImageNode.height(),
+      }
+    : null;
+
   const lensCanvas = generateLensCanvas(
     originalImageObj,
-    STAGE_WIDTH,
-    STAGE_HEIGHT,
-    currentLensConfig,
-    currentImageNode
-      ? {
-          x: currentImageNode.x(),
-          y: currentImageNode.y(),
-          width: currentImageNode.width(),
-          height: currentImageNode.height(),
-        }
-      : null
+    portal.item.width,
+    portal.item.height,
+    portal.item,
+    imagePosition,
+    focusPoint
   );
 
-  lensImageNode.image(lensCanvas);
-  lensImageNode.width(STAGE_WIDTH);
-  lensImageNode.height(STAGE_HEIGHT);
-
-  if (currentVectorShapeFunc) {
-    lensGroup.clipFunc((ctx) => {
+  if (portal.item.shapeKey === 'custom' && portal.customMaskCanvas) {
+    portal.group.clipFunc(null as unknown as () => void);
+    const masked = document.createElement('canvas');
+    masked.width = portal.item.width;
+    masked.height = portal.item.height;
+    const mctx = masked.getContext('2d');
+    if (mctx) {
+      mctx.drawImage(lensCanvas, 0, 0);
+      mctx.globalCompositeOperation = 'destination-in';
+      mctx.drawImage(portal.customMaskCanvas, 0, 0, portal.item.width, portal.item.height);
+    }
+    portal.imageNode.image(masked);
+    portal.imageNode.width(portal.item.width);
+    portal.imageNode.height(portal.item.height);
+    portal.borderNode.visible(false);
+  } else {
+    const shapeFunc = SHAPES[portal.item.shapeKey] || SHAPES['diamond'];
+    portal.group.clipFunc((ctx) => {
       const rawCtx =
         (ctx as unknown as { _context: CanvasRenderingContext2D })._context ||
         (ctx as unknown as CanvasRenderingContext2D);
-      currentVectorShapeFunc!(rawCtx, STAGE_WIDTH, STAGE_HEIGHT);
+      rawCtx.beginPath();
+      shapeFunc(rawCtx, portal.item.width, portal.item.height);
     });
-    if (lensBorderNode) {
-      lensBorderNode.visible(currentLensConfig.glassReflect);
-    }
-  } else if (customMaskImageNode) {
-    lensGroup.clipFunc(null as unknown as () => void);
-    if (lensBorderNode) lensBorderNode.visible(false);
+
+    portal.imageNode.image(lensCanvas);
+    portal.imageNode.width(portal.item.width);
+    portal.imageNode.height(portal.item.height);
+
+    portal.borderNode.sceneFunc((ctx, shape) => {
+      const rawCtx =
+        (ctx as unknown as { _context: CanvasRenderingContext2D })._context ||
+        (ctx as unknown as CanvasRenderingContext2D);
+      rawCtx.beginPath();
+      shapeFunc(rawCtx, portal.item.width, portal.item.height);
+      ctx.strokeShape(shape);
+    });
+    portal.borderNode.visible(portal.item.glassReflect);
   }
 
-  lensGroup.visible(true);
   lensLayer.batchDraw();
+}
+
+export function renderAllLenses(): void {
+  if (!lensLayer) return;
+  lensPortals.forEach((p) => renderLensPortal(p));
+  lensLayer.batchDraw();
+}
+
+export function addLensPortal(options?: Partial<SerializedLensItem>): string {
+  if (!lensLayer) throw new Error('Canvas henüz başlatılmadı.');
+
+  const idx = lensPortals.length;
+  const defaultTints = ['emerald', 'sky', 'rose', 'amber', 'storm'] as const;
+  const tint = options?.tint ?? defaultTints[idx % defaultTints.length];
+
+  const item: SerializedLensItem = {
+    id: options?.id || `lens_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    shapeKey: options?.shapeKey || 'diamond',
+    x: Math.round(options?.x ?? (STAGE_WIDTH / 2 + (idx * 22 - 22))),
+    y: Math.round(options?.y ?? (STAGE_HEIGHT / 2 + (idx * 18 - 18))),
+    width: options?.width ?? 170,
+    height: options?.height ?? 170,
+    rotation: options?.rotation ?? 0,
+    zoom: options?.zoom ?? 1.6,
+    bulge: options?.bulge ?? 35,
+    aberration: options?.aberration ?? 3,
+    tint,
+    glassReflect: options?.glassReflect ?? true,
+    visible: options?.visible ?? true,
+  };
+
+  const group = new Konva.Group({
+    id: item.id,
+    x: item.x,
+    y: item.y,
+    width: item.width,
+    height: item.height,
+    offsetX: item.width / 2,
+    offsetY: item.height / 2,
+    rotation: item.rotation,
+    draggable: true,
+  });
+
+  const imageNode = new Konva.Image({
+    image: document.createElement('canvas'),
+    x: 0,
+    y: 0,
+    width: item.width,
+    height: item.height,
+    listening: false,
+  });
+
+  const borderNode = new Konva.Shape({
+    sceneFunc: (ctx, shape) => {
+      const shapeFunc = SHAPES[item.shapeKey] || SHAPES['diamond'];
+      const rawCtx =
+        (ctx as unknown as { _context: CanvasRenderingContext2D })._context ||
+        (ctx as unknown as CanvasRenderingContext2D);
+      rawCtx.beginPath();
+      shapeFunc(rawCtx, item.width, item.height);
+      ctx.strokeShape(shape);
+    },
+    stroke: 'rgba(255, 255, 255, 0.85)',
+    strokeWidth: 2,
+    shadowColor: 'rgba(255, 255, 255, 0.6)',
+    shadowBlur: 6,
+    listening: false,
+  });
+
+  group.add(imageNode, borderNode);
+
+  const portalInstance: LensPortalInstance = {
+    item,
+    group,
+    imageNode,
+    borderNode,
+  };
+
+  group.on('click tap dragstart', (e) => {
+    e.cancelBubble = true;
+    deselectText();
+    selectLens(item.id);
+  });
+
+  group.on('dragmove', () => {
+    item.x = Math.round(group.x());
+    item.y = Math.round(group.y());
+    renderLensPortal(portalInstance);
+  });
+
+  group.on('dragend', () => {
+    notifyChange();
+  });
+
+  group.on('transform', () => {
+    const scaleX = group.scaleX();
+    const scaleY = group.scaleY();
+    group.scaleX(1);
+    group.scaleY(1);
+    item.width = Math.max(40, Math.round(item.width * scaleX));
+    item.height = Math.max(40, Math.round(item.height * scaleY));
+    item.rotation = Math.round(group.rotation());
+    group.width(item.width);
+    group.height(item.height);
+    group.offsetX(item.width / 2);
+    group.offsetY(item.height / 2);
+    item.x = Math.round(group.x());
+    item.y = Math.round(group.y());
+    renderLensPortal(portalInstance);
+  });
+
+  group.on('transformend', () => {
+    notifyChange();
+  });
+
+  lensLayer.add(group);
+  if (lensTransformer) lensTransformer.moveToTop();
+
+  lensPortals.push(portalInstance);
+  renderLensPortal(portalInstance);
+  selectLens(item.id);
+  notifyChange();
+
+  return item.id;
+}
+
+export function removeLensPortal(id?: string): void {
+  const targetId = id || activeLensId;
+  if (!targetId) return;
+
+  const idx = lensPortals.findIndex((p) => p.item.id === targetId);
+  if (idx === -1) return;
+
+  const portal = lensPortals[idx];
+  portal.group.destroy();
+  lensPortals.splice(idx, 1);
+
+  if (activeLensId === targetId) {
+    const nextPortal = lensPortals[Math.max(0, idx - 1)] || null;
+    selectLens(nextPortal ? nextPortal.item.id : null);
+  }
+
+  lensLayer?.batchDraw();
   notifyChange();
 }
 
-export function setLensConfig(cfg: Partial<LensConfig>): void {
-  if (cfg.enabled !== undefined) currentLensConfig.enabled = cfg.enabled;
-  if (cfg.zoom !== undefined) currentLensConfig.zoom = cfg.zoom;
-  if (cfg.bulge !== undefined) currentLensConfig.bulge = cfg.bulge;
-  if (cfg.aberration !== undefined) currentLensConfig.aberration = cfg.aberration;
-  if (cfg.tint !== undefined) currentLensConfig.tint = cfg.tint;
-  if (cfg.glassReflect !== undefined) currentLensConfig.glassReflect = cfg.glassReflect;
+export function updateSelectedLens(options: Partial<SerializedLensItem>): void {
+  if (!activeLensId) {
+    // Seçili portal yoksa ama güncellenmek isteniyorsa, ilk portalı güncelle veya yeni oluştur
+    if (lensPortals.length > 0) {
+      activeLensId = lensPortals[0].item.id;
+    } else {
+      addLensPortal(options);
+      return;
+    }
+  }
 
-  updateLensRender();
+  const portal = lensPortals.find((p) => p.item.id === activeLensId);
+  if (!portal) return;
+
+  Object.assign(portal.item, options);
+  renderLensPortal(portal);
+  notifyChange();
+}
+
+export function setLensMaskForActive(canvas: HTMLCanvasElement): void {
+  if (!activeLensId) {
+    if (lensPortals.length === 0) addLensPortal({ shapeKey: 'custom' });
+    else activeLensId = lensPortals[0].item.id;
+  }
+
+  const portal = lensPortals.find((p) => p.item.id === activeLensId);
+  if (!portal) return;
+
+  portal.item.shapeKey = 'custom';
+  portal.customMaskCanvas = canvas;
+  renderLensPortal(portal);
+  notifyChange();
+}
+
+export function applyLensLayoutPreset(preset: LensLayoutPreset): void {
+  if (!lensLayer) return;
+
+  // Önce mevcut portalları temizle
+  if (lensTransformer) lensTransformer.nodes([]);
+  lensPortals.forEach((p) => p.group.destroy());
+  lensPortals = [];
+  activeLensId = null;
+
+  const w = STAGE_WIDTH;
+  const h = STAGE_HEIGHT;
+
+  if (preset === 'minamiMv') {
+    // 🎬 Minami MV Orijinal Sahne Düzeni (Kullanıcının ekran görüntüsündeki 5 elmas portal!)
+    // 1. Merkez Başrol (Büyük Zümrüt Elmas)
+    addLensPortal({
+      shapeKey: 'diamond',
+      x: Math.round(w * 0.48),
+      y: Math.round(h * 0.28),
+      width: Math.round(Math.min(w, h) * 0.44),
+      height: Math.round(Math.min(w, h) * 0.44),
+      rotation: 0,
+      zoom: 1.8,
+      bulge: 35,
+      aberration: 4,
+      tint: 'emerald',
+      glassReflect: true,
+      visible: true,
+    });
+
+    // 2. Sağ Alt (Mavi Cam Portal)
+    addLensPortal({
+      shapeKey: 'diamond',
+      x: Math.round(w * 0.74),
+      y: Math.round(h * 0.68),
+      width: Math.round(Math.min(w, h) * 0.36),
+      height: Math.round(Math.min(w, h) * 0.36),
+      rotation: 0,
+      zoom: 1.6,
+      bulge: 25,
+      aberration: 3,
+      tint: 'sky',
+      glassReflect: true,
+      visible: true,
+    });
+
+    // 3. Sol Alt (Gök Mavisi / Berrak Cam)
+    addLensPortal({
+      shapeKey: 'diamond',
+      x: Math.round(w * 0.22),
+      y: Math.round(h * 0.62),
+      width: Math.round(Math.min(w, h) * 0.32),
+      height: Math.round(Math.min(w, h) * 0.32),
+      rotation: 0,
+      zoom: 1.7,
+      bulge: 30,
+      aberration: 3,
+      tint: 'sky',
+      glassReflect: true,
+      visible: true,
+    });
+
+    // 4. Sol Kenar (Fırtına Grisi Cam)
+    addLensPortal({
+      shapeKey: 'diamond',
+      x: Math.round(w * 0.06),
+      y: Math.round(h * 0.38),
+      width: Math.round(Math.min(w, h) * 0.28),
+      height: Math.round(Math.min(w, h) * 0.28),
+      rotation: 0,
+      zoom: 1.5,
+      bulge: 20,
+      aberration: 2,
+      tint: 'storm',
+      glassReflect: true,
+      visible: true,
+    });
+
+    // 5. Sağ Üst (Fırtına Grisi Cam)
+    addLensPortal({
+      shapeKey: 'diamond',
+      x: Math.round(w * 0.88),
+      y: Math.round(h * 0.36),
+      width: Math.round(Math.min(w, h) * 0.30),
+      height: Math.round(Math.min(w, h) * 0.30),
+      rotation: 0,
+      zoom: 1.5,
+      bulge: 20,
+      aberration: 2,
+      tint: 'storm',
+      glassReflect: true,
+      visible: true,
+    });
+  } else if (preset === 'diagonal') {
+    // 📐 Çapraz Şelale (3'lü Elmas Dizilimi)
+    addLensPortal({
+      shapeKey: 'diamond',
+      x: Math.round(w * 0.25),
+      y: Math.round(h * 0.25),
+      width: Math.round(Math.min(w, h) * 0.36),
+      height: Math.round(Math.min(w, h) * 0.36),
+      zoom: 1.6,
+      bulge: 30,
+      aberration: 3,
+      tint: 'emerald',
+      glassReflect: true,
+    });
+    addLensPortal({
+      shapeKey: 'diamond',
+      x: Math.round(w * 0.50),
+      y: Math.round(h * 0.50),
+      width: Math.round(Math.min(w, h) * 0.42),
+      height: Math.round(Math.min(w, h) * 0.42),
+      zoom: 1.9,
+      bulge: 40,
+      aberration: 4,
+      tint: 'sky',
+      glassReflect: true,
+    });
+    addLensPortal({
+      shapeKey: 'diamond',
+      x: Math.round(w * 0.75),
+      y: Math.round(h * 0.75),
+      width: Math.round(Math.min(w, h) * 0.34),
+      height: Math.round(Math.min(w, h) * 0.34),
+      zoom: 1.5,
+      bulge: 25,
+      aberration: 3,
+      tint: 'rose',
+      glassReflect: true,
+    });
+  } else if (preset === 'triad') {
+    // 🔺 Üçlü Prizma (Biri tepede, ikisi altta)
+    addLensPortal({
+      shapeKey: 'diamond',
+      x: Math.round(w * 0.50),
+      y: Math.round(h * 0.28),
+      width: Math.round(Math.min(w, h) * 0.44),
+      height: Math.round(Math.min(w, h) * 0.44),
+      zoom: 1.8,
+      bulge: 35,
+      aberration: 3,
+      tint: 'emerald',
+      glassReflect: true,
+    });
+    addLensPortal({
+      shapeKey: 'diamond',
+      x: Math.round(w * 0.25),
+      y: Math.round(h * 0.68),
+      width: Math.round(Math.min(w, h) * 0.35),
+      height: Math.round(Math.min(w, h) * 0.35),
+      zoom: 1.6,
+      bulge: 30,
+      aberration: 3,
+      tint: 'sky',
+      glassReflect: true,
+    });
+    addLensPortal({
+      shapeKey: 'diamond',
+      x: Math.round(w * 0.75),
+      y: Math.round(h * 0.68),
+      width: Math.round(Math.min(w, h) * 0.35),
+      height: Math.round(Math.min(w, h) * 0.35),
+      zoom: 1.6,
+      bulge: 30,
+      aberration: 3,
+      tint: 'amber',
+      glassReflect: true,
+    });
+  } else if (preset === 'duo') {
+    // ⚖️ İkili Odak (Büyük odak + Küçük dengeleyici)
+    addLensPortal({
+      shapeKey: 'diamond',
+      x: Math.round(w * 0.38),
+      y: Math.round(h * 0.40),
+      width: Math.round(Math.min(w, h) * 0.46),
+      height: Math.round(Math.min(w, h) * 0.46),
+      zoom: 1.9,
+      bulge: 40,
+      aberration: 4,
+      tint: 'emerald',
+      glassReflect: true,
+    });
+    addLensPortal({
+      shapeKey: 'diamond',
+      x: Math.round(w * 0.74),
+      y: Math.round(h * 0.68),
+      width: Math.round(Math.min(w, h) * 0.32),
+      height: Math.round(Math.min(w, h) * 0.32),
+      zoom: 1.5,
+      bulge: 25,
+      aberration: 2,
+      tint: 'sky',
+      glassReflect: true,
+    });
+  } else if (preset === 'scatter') {
+    // ✨ 4 Köşe Dinamik Saçılma
+    addLensPortal({
+      shapeKey: 'diamond',
+      x: Math.round(w * 0.25),
+      y: Math.round(h * 0.25),
+      width: Math.round(Math.min(w, h) * 0.32),
+      height: Math.round(Math.min(w, h) * 0.32),
+      zoom: 1.6,
+      bulge: 25,
+      tint: 'rose',
+      glassReflect: true,
+    });
+    addLensPortal({
+      shapeKey: 'diamond',
+      x: Math.round(w * 0.75),
+      y: Math.round(h * 0.25),
+      width: Math.round(Math.min(w, h) * 0.34),
+      height: Math.round(Math.min(w, h) * 0.34),
+      zoom: 1.7,
+      bulge: 30,
+      tint: 'emerald',
+      glassReflect: true,
+    });
+    addLensPortal({
+      shapeKey: 'diamond',
+      x: Math.round(w * 0.25),
+      y: Math.round(h * 0.72),
+      width: Math.round(Math.min(w, h) * 0.30),
+      height: Math.round(Math.min(w, h) * 0.30),
+      zoom: 1.5,
+      bulge: 20,
+      tint: 'amber',
+      glassReflect: true,
+    });
+    addLensPortal({
+      shapeKey: 'diamond',
+      x: Math.round(w * 0.75),
+      y: Math.round(h * 0.72),
+      width: Math.round(Math.min(w, h) * 0.36),
+      height: Math.round(Math.min(w, h) * 0.36),
+      zoom: 1.8,
+      bulge: 35,
+      tint: 'sky',
+      glassReflect: true,
+    });
+  } else {
+    // Tekil portal
+    addLensPortal({ shapeKey: 'diamond', zoom: 1.6, bulge: 35, tint: 'emerald' });
+  }
+
+  if (lensPortals.length > 0) {
+    selectLens(lensPortals[0].item.id);
+  }
+  renderAllLenses();
+  notifyChange();
+}
+
+export function invertLensMaskForActive(): void {
+  if (!activeLensId) return;
+  const portal = lensPortals.find((p) => p.item.id === activeLensId);
+  if (!portal || !portal.customMaskCanvas) return;
+
+  const mctx = portal.customMaskCanvas.getContext('2d');
+  if (!mctx) return;
+  const imgData = mctx.getImageData(0, 0, portal.customMaskCanvas.width, portal.customMaskCanvas.height);
+  const d = imgData.data;
+  for (let i = 0; i < d.length; i += 4) {
+    d[i + 3] = 255 - d[i + 3];
+  }
+  mctx.putImageData(imgData, 0, 0);
+
+  renderLensPortal(portal);
+  notifyChange();
+}
+
+// Geriye dönük uyumluluk fonksiyonları
+export function updateLensRender(): void {
+  renderAllLenses();
+}
+
+export function setLensConfig(cfg: Partial<LensConfig>): void {
+  if (cfg.enabled === false) {
+    lensPortals.forEach((p) => {
+      p.item.visible = false;
+      renderLensPortal(p);
+    });
+    currentLensConfig.enabled = false;
+    return;
+  }
+
+  if (cfg.enabled === true) {
+    currentLensConfig.enabled = true;
+    if (lensPortals.length === 0) {
+      addLensPortal({
+        zoom: cfg.zoom ?? currentLensConfig.zoom,
+        bulge: cfg.bulge ?? currentLensConfig.bulge,
+        aberration: cfg.aberration ?? currentLensConfig.aberration,
+        tint: cfg.tint ?? currentLensConfig.tint,
+        glassReflect: cfg.glassReflect ?? currentLensConfig.glassReflect,
+      });
+      return;
+    }
+  }
+
+  updateSelectedLens({
+    zoom: cfg.zoom,
+    bulge: cfg.bulge,
+    aberration: cfg.aberration,
+    tint: cfg.tint,
+    glassReflect: cfg.glassReflect,
+    visible: cfg.enabled !== undefined ? cfg.enabled : undefined,
+  });
 }
 
 export function getLensConfig(): LensConfig {
+  const selected = getSelectedLens();
+  if (selected) {
+    return {
+      enabled: selected.visible,
+      zoom: selected.zoom,
+      bulge: selected.bulge,
+      aberration: selected.aberration,
+      tint: selected.tint,
+      glassReflect: selected.glassReflect,
+    };
+  }
   return { ...currentLensConfig };
 }
 
@@ -1121,6 +1686,7 @@ export function toggleBackground(forceState?: boolean): boolean {
 
 export function exportPNG(): string {
   deselectText();
+  selectLens(null);
   if (!stage) throw new Error('Stage henüz başlatılmadı.');
   return exportHighResolutionPNG(stage, STAGE_WIDTH, STAGE_HEIGHT);
 }
@@ -1129,6 +1695,7 @@ export async function exportMultiFormat(
   options: ExportOptions
 ): Promise<{ dataUrl?: string; blob?: Blob; extension: string }> {
   deselectText();
+  selectLens(null);
   if (!stage) throw new Error('Stage henüz başlatılmadı.');
   return exportProject(stage, STAGE_WIDTH, currentPreset, options);
 }
@@ -1235,6 +1802,7 @@ export function getProjectSnapshot(): ProjectSnapshot {
     texture: { ...currentTextureConfig },
     adjustments: { ...currentImageAdjustments },
     lens: { ...currentLensConfig },
+    lenses: lensPortals.map((p) => ({ ...p.item })),
   };
 }
 
@@ -1344,11 +1912,23 @@ export function restoreProjectSnapshot(snapshot: ProjectSnapshot): void {
     textLayer.batchDraw();
   }
 
-  // 11. Mercek Portalı (Lens FX)
-  if (snapshot.lens) {
-    setLensConfig(snapshot.lens);
-  } else {
-    setLensConfig({ enabled: false });
+  // 11. Mercek Portalları (Multi-Lens FX)
+  if (lensTransformer) lensTransformer.nodes([]);
+  lensPortals.forEach((p) => p.group.destroy());
+  lensPortals = [];
+  activeLensId = null;
+
+  if (snapshot.lenses && snapshot.lenses.length > 0) {
+    snapshot.lenses.forEach((l) => addLensPortal(l));
+  } else if (snapshot.lens && snapshot.lens.enabled) {
+    addLensPortal({
+      zoom: snapshot.lens.zoom,
+      bulge: snapshot.lens.bulge,
+      aberration: snapshot.lens.aberration,
+      tint: snapshot.lens.tint,
+      glassReflect: snapshot.lens.glassReflect,
+      visible: true,
+    });
   }
 
   photoLayer?.batchDraw();
@@ -1391,7 +1971,10 @@ export function resetEngine(): void {
   currentImageAdjustments.grayscale = false;
 
   currentLensConfig.enabled = false;
-  if (lensGroup) lensGroup.visible(false);
+  if (lensTransformer) lensTransformer.nodes([]);
+  lensPortals.forEach((p) => p.group.destroy());
+  lensPortals = [];
+  activeLensId = null;
   lensLayer?.batchDraw();
 
   if (maskGroup) {

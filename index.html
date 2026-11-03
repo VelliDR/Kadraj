@@ -418,24 +418,48 @@
             </div>
           </div>
 
-          <!-- 6. Faz 6: Optik Mercek ve Cam Portalı Paneli (Lens FX) -->
+          <!-- 6. Faz 6: Optik Mercek ve Cam Portalları Paneli (Multi-Lens FX) -->
           <div class="dock-panel" id="tab-lens">
+            <!-- 1. Satır: Yerleşim Şablonları & Portal Yönetimi -->
             <div class="panel-row">
-              <label class="toggle-pill">
-                <input type="checkbox" id="chkLensEnabled" />
-                <span>🔍 Mercek Portalı Aktif</span>
-              </label>
+              <span class="panel-section-title">📐 YERLEŞİM:</span>
+              <div class="m3-button-group" title="Çoklu Mercek Yerleşim Şablonları">
+                <button type="button" class="group-btn active" data-lens-preset="minamiMv" id="btnPresetMinamiMv">🎬 Minami Klip (5'li)</button>
+                <button type="button" class="group-btn" data-lens-preset="diagonal" id="btnPresetDiagonal">📐 Çapraz (3'lü)</button>
+                <button type="button" class="group-btn" data-lens-preset="triad" id="btnPresetTriad">🔺 Üçlü (Triad)</button>
+                <button type="button" class="group-btn" data-lens-preset="scatter" id="btnPresetScatter">✨ Saçılma (4'lü)</button>
+                <button type="button" class="group-btn" data-lens-preset="duo" id="btnPresetDuo">⚖️ İkili (Duo)</button>
+              </div>
 
-              <label class="toggle-pill">
+              <div class="divider-v"></div>
+
+              <button type="button" class="m3-btn m3-btn-sand" id="btnAddLensPortal" title="Tuvale Yeni Bir Portal Ekle">➕ Portal Ekle</button>
+              <button type="button" class="m3-btn m3-btn-tonal" id="btnDeleteLensPortal" title="Seçili Portalı Sil">🗑️ Sil</button>
+
+              <label class="toggle-pill" style="margin-left: 6px;">
                 <input type="checkbox" id="chkLensReflect" checked />
                 <span>✨ Cam Işığı</span>
               </label>
+            </div>
+
+            <!-- 2. Satır: Seçili Portal Şekli & Optik Kadranlar -->
+            <div class="panel-row" style="margin-top: 5px;">
+              <span class="panel-section-title" id="lensActivePortalBadge">💎 ŞEKİL:</span>
+              <div class="m3-button-group" title="Seçili Portalın Şekli">
+                <button type="button" class="group-btn active" data-lens-shape="diamond" id="btnLensShapeDiamond">💎 Elmas</button>
+                <button type="button" class="group-btn" data-lens-shape="circle" id="btnLensShapeCircle">⭕ Daire</button>
+                <button type="button" class="group-btn" data-lens-shape="hexagon" id="btnLensShapeHexagon">⬡ Altıgen</button>
+                <button type="button" class="group-btn" data-lens-shape="cinemaFrame" id="btnLensShapeCinema">🎞️ Sinema</button>
+                <button type="button" class="group-btn" data-lens-shape="blob" id="btnLensShapeBlob">💧 Damla</button>
+              </div>
+
+              <div class="divider-v"></div>
 
               <!-- Mercek Büyütmesi (Zoom) -->
-              <div class="dial-container" style="max-width: 110px;">
+              <div class="dial-container" style="max-width: 95px;">
                 <div class="dial-header">
                   <span>BÜYÜTME</span>
-                  <span class="dial-value" id="lensZoomDisplay">1.6x</span>
+                  <span class="dial-value" id="lensZoomDisplay">1.8x</span>
                 </div>
                 <div class="dial-track" id="lensZoomRange">
                   <div class="dial-center-mark"></div>
@@ -443,9 +467,9 @@
               </div>
 
               <!-- Balıkgözü / Küresel Bombe -->
-              <div class="dial-container" style="max-width: 110px;">
+              <div class="dial-container" style="max-width: 95px;">
                 <div class="dial-header">
-                  <span>BOMBE (BULGE)</span>
+                  <span>BOMBE</span>
                   <span class="dial-value" id="lensBulgeDisplay">%35</span>
                 </div>
                 <div class="dial-track" id="lensBulgeRange">
@@ -454,23 +478,34 @@
               </div>
 
               <!-- Prizmatik Kromatik Aberasyon -->
-              <div class="dial-container" style="max-width: 110px;">
+              <div class="dial-container" style="max-width: 95px;">
                 <div class="dial-header">
-                  <span>PRİZMA (RGB)</span>
-                  <span class="dial-value" id="lensAberrationDisplay">3px</span>
+                  <span>PRİZMA</span>
+                  <span class="dial-value" id="lensAberrationDisplay">4px</span>
                 </div>
                 <div class="dial-track" id="lensAberrationRange">
                   <div class="dial-center-mark"></div>
                 </div>
               </div>
+
+              <!-- Portal Döndürme -->
+              <div class="dial-container" style="max-width: 95px;">
+                <div class="dial-header">
+                  <span>DÖNDÜR</span>
+                  <span class="dial-value" id="lensRotationDisplay">0°</span>
+                </div>
+                <div class="dial-track" id="lensRotationRange">
+                  <div class="dial-center-mark"></div>
+                </div>
+              </div>
             </div>
 
-            <!-- Cam Renk Filtresi & Kendi Şeklini Yükleme Satırı -->
-            <div class="panel-row" style="margin-top: 4px;">
+            <!-- 3. Satır: Cam Renk Filtresi & Kendi Şeklini Yükleme Satırı -->
+            <div class="panel-row" style="margin-top: 5px;">
               <span class="panel-section-title">🪟 CAM TONU:</span>
               <div class="m3-button-group" title="Cam Rengi">
-                <button type="button" class="group-btn active" data-tint="none" id="btnLensTintNone">Doğal</button>
-                <button type="button" class="group-btn" data-tint="emerald" id="btnLensTintEmerald" style="color: #00e676;">🌿 Zümrüt</button>
+                <button type="button" class="group-btn" data-tint="none" id="btnLensTintNone">Doğal</button>
+                <button type="button" class="group-btn active" data-tint="emerald" id="btnLensTintEmerald" style="color: #00e676;">🌿 Zümrüt</button>
                 <button type="button" class="group-btn" data-tint="sky" id="btnLensTintSky" style="color: #00b0ff;">🌊 Mavi</button>
                 <button type="button" class="group-btn" data-tint="storm" id="btnLensTintStorm" style="color: #90a4ae;">⛈️ Fırtına</button>
                 <button type="button" class="group-btn" data-tint="amber" id="btnLensTintAmber" style="color: #ffb300;">🍯 Kehribar</button>
